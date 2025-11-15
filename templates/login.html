@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Admin Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* CSS Variables matching admin panel */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-color: #667eea;
+            --bg-primary: #0f0f1e;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #1e1e30;
+            --text-primary: #ffffff;
+            --text-secondary: #b8b8d1;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.3);
+            --radius-xl: 1rem;
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 0.75rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-xxl: 3rem;
+        }
+
+        html {
+            font-size: 14px;
+        }
+
+        body {
+            background: var(--bg-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            padding: var(--spacing-md);
+            line-height: 1.5;
+        }
+
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            width: 100%;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            max-width: 440px;
+            width: 100%;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .login-header h2 {
+            margin: 0 0 var(--spacing-xs) 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .login-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .login-body {
+            padding: var(--spacing-xl);
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-xs);
+            display: block;
+        }
+
+        .form-control {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            background: var(--bg-secondary);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            color: var(--text-primary);
+        }
+
+        .input-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .input-group-text {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-right: none;
+            color: var(--text-secondary);
+            padding: 0.75rem 1rem;
+        }
+
+        .input-group .form-control {
+            border-left: none;
+            padding-left: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 0.875rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+            margin-top: var(--spacing-sm);
+        }
+
+        .btn-telegram {
+            background: linear-gradient(135deg, #0088cc 0%, #00aced 100%);
+            border: none;
+            padding: 0.875rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+            margin-top: var(--spacing-sm);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-telegram:hover {
+            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.4);
+            transform: translateY(-1px);
+            color: white;
+        }
+
+        .btn-primary:active,
+        .btn-telegram:active {
+            transform: translateY(0);
+        }
+
+        .alert-danger {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #f87171;
+            border-radius: 0.5rem;
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-top: var(--spacing-md);
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: var(--spacing-lg) 0;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .divider::before {
+            margin-right: var(--spacing-sm);
+        }
+
+        .divider::after {
+            margin-left: var(--spacing-sm);
+        }
+
+        /* Mobile/WebApp adjustments */
+        @media (max-width: 767px) {
+            html {
+                font-size: 13px;
+            }
+
+            body {
+                padding: var(--spacing-sm);
+            }
+
+            .login-card {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .login-header {
+                padding: var(--spacing-lg);
+            }
+
+            .login-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .login-body {
+                padding: var(--spacing-lg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-header {
+                padding: var(--spacing-md);
+            }
+
+            .login-body {
+                padding: var(--spacing-md);
+            }
+
+            .login-header h2 {
+                font-size: 1.35rem;
+            }
+        }
+
+        /* Focus states for accessibility */
+        .btn-primary:focus,
+        .btn-telegram:focus,
+        .form-control:focus {
+            outline: none;
+        }
+
+        /* Loading state */
+        .btn-primary.loading,
+        .btn-telegram.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .btn-primary.loading i,
+        .btn-telegram.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Telegram Web App specific */
+        .telegram-only {
+            display: none;
+        }
+
+        .webapp .telegram-only {
+            display: block;
+        }
+
+        .webapp .basic-auth {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center w-100">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
+                <div class="login-card">
+                    <div class="login-header">
+                        <h2><i class="fas fa-robot"></i> Bot Admin</h2>
+                        <p>Панель управления</p>
+                    </div>
+
+                    <div class="login-body">
+                        <!-- Telegram Web App Auth -->
+                        <div id="telegramAuth" class="telegram-only">
+                            <button type="button" class="btn btn-telegram w-100" onclick="loginWithTelegram()">
+                                <i class="fab fa-telegram"></i> Войти через Telegram
+                            </button>
+                            <div class="text-center mt-2">
+                                <small class="text-muted">Автоматическая авторизация через Telegram Web App</small>
+                            </div>
+                        </div>
+
+                        <!-- Basic Auth Form -->
+                        <div id="basicAuth" class="basic-auth">
+                            <form id="loginForm">
+                                <div class="form-group">
+                                    <label for="username" class="form-label">Имя пользователя</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-user"></i>
+                                        </span>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="username"
+                                               name="username"
+                                               placeholder="Введите имя пользователя"
+                                               required
+                                               autocomplete="username">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="password" class="form-label">Пароль</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-lock"></i>
+                                        </span>
+                                        <input type="password"
+                                               class="form-control"
+                                               id="password"
+                                               name="password"
+                                               placeholder="Введите пароль"
+                                               required
+                                               autocomplete="current-password">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-sign-in-alt"></i> Войти
+                                </button>
+                            </form>
+
+                            <div class="divider telegram-only">или</div>
+
+                            <div class="telegram-only text-center">
+                                <button type="button" class="btn btn-telegram w-100" onclick="loginWithTelegram()">
+                                    <i class="fab fa-telegram"></i> Войти через Telegram
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Проверяем, открыто ли в Telegram Web App
+        function isTelegramWebApp() {
+            return window.Telegram && Telegram.WebApp;
+        }
+
+        // Инициализация интерфейса
+        function initLoginInterface() {
+            const isWebApp = isTelegramWebApp();
+            const basicAuthDisabled = {{ basic_auth_disabled|tojson }};
+
+            if (isWebApp) {
+                document.body.classList.add('webapp');
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+
+                // Пытаемся автоматически войти через Telegram
+                setTimeout(loginWithTelegram, 500);
+            } else {
+                document.body.classList.remove('webapp');
+
+                // Если базовая аутентификация отключена, показываем только Telegram кнопку
+                if (basicAuthDisabled) {
+                    document.getElementById('basicAuth').style.display = 'none';
+                    document.getElementById('telegramAuth').style.display = 'block';
+                } else {
+                    document.getElementById('username').focus();
+                }
+            }
+        }
+
+        // Авторизация через Telegram Web App
+        async function loginWithTelegram() {
+            if (!isTelegramWebApp()) {
+                showError('Функция доступна только в Telegram Web App');
+                return;
+            }
+
+            const telegramBtn = document.querySelector('.btn-telegram');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // Reset states
+            errorAlert.classList.add('d-none');
+            telegramBtn.classList.add('loading');
+
+            try {
+                const initData = Telegram.WebApp.initData;
+
+                const response = await fetch('/admin/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        auth_type: 'telegram',
+                        initData: initData
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = data.redirect || '/admin/info';
+                } else {
+                    showError(data.error || 'Ошибка авторизации через Telegram');
+
+                    // Показываем базовую форму если Telegram аутентификация не удалась
+                    document.body.classList.remove('webapp');
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером');
+                console.error('Telegram auth error:', error);
+            } finally {
+                telegramBtn.classList.remove('loading');
+            }
+        }
+
+        // Базовая авторизация
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // Reset states
+            errorAlert.classList.add('d-none');
+            submitBtn.classList.add('loading');
+
+            const formData = {
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const response = await fetch('/admin/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = data.redirect || '/admin/info';
+                } else {
+                    showError(data.error || 'Ошибка авторизации');
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером');
+            } finally {
+                submitBtn.classList.remove('loading');
+            }
+        });
+
+        function showError(message) {
+            const errorAlert = document.getElementById('errorAlert');
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('d-none');
+        }
+
+        // Скрыть ошибку при вводе
+        document.addEventListener('input', function() {
+            const errorAlert = document.getElementById('errorAlert');
+            if (!errorAlert.classList.contains('d-none')) {
+                errorAlert.classList.add('d-none');
+            }
+        });
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', initLoginInterface);
+    </script>
+</body>
+</html>

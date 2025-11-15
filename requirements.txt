@@ -1,0 +1,18 @@
+# Основные зависимости фреймворка Telegram-ботов
+# =============================================
+
+aiogram
+
+# Веб-фреймворк для админ-панели
+aiohttp
+aiohttp-jinja2
+aiohttp_cors
+jinja2
+
+# Работа с конфигурацией
+pyyaml
+python-dotenv
+
+# API документация (опционально)
+fastapi
+uvicorn

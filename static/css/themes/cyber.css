@@ -1,0 +1,66 @@
+/* static/css/themes/cyber.css */
+:root {
+    /* Colors */
+    --primary-gradient: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);
+    --primary-color: #8B5CF6;
+    --primary-dark: #7C3AED;
+    --secondary-color: #D946EF;
+    --accent-color: #F0ABFC;
+
+    /* Background colors */
+    --bg-primary: #0F0F23;
+    --bg-secondary: #1A1A2E;
+    --bg-tertiary: #2D2B55;
+    --bg-card: #232342;
+    --bg-hover: #37346B;
+
+    /* Text colors */
+    --text-primary: #FAF5FF;
+    --text-secondary: #DDD6FE;
+    --text-muted: #A78BFA;
+    --text-success: #10B981;
+    --text-warning: #F59E0B;
+    --text-danger: #EF4444;
+    --text-info: #06B6D4;
+
+    /* Status colors */
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info-bg: rgba(6, 182, 212, 0.15);
+
+    /* Borders and shadows */
+    --border-color: rgba(250, 245, 255, 0.1);
+    --shadow-sm: 0 2px 8px rgba(139, 92, 246, 0.1);
+    --shadow-md: 0 4px 16px rgba(139, 92, 246, 0.15);
+    --shadow-lg: 0 8px 32px rgba(139, 92, 246, 0.2);
+    --shadow-xl: 0 16px 48px rgba(139, 92, 246, 0.25);
+
+    /* Остальные переменные остаются такими же как в dark теме */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+}

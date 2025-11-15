@@ -1,0 +1,601 @@
+{% extends "base.html" %}
+
+{% block title %}Info{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-info-circle"></i> System Information</h1>
+        <p class="text-muted">Обзор статистики и информация о системе</p>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-users"></i> Статистика пользователей</h5>
+            </div>
+            <div class="card-body">
+                <!-- Основная статистика -->
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                            <h3 class="mb-1 text-primary" id="totalUsers">0</h3>
+                            <p class="mb-0 text-muted small">Всего пользователей</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                            <h3 class="mb-1 text-success" id="activeToday">0</h3>
+                            <p class="mb-0 text-muted small">Активных сегодня</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Процентное соотношение -->
+                <div class="mb-3">
+                    <h6 class="mb-3">Распределение по типам:</h6>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Обычные пользователи</span>
+                            <span class="fw-bold small"><span id="regularUsersCount">0</span> (<span id="regularUsersPercent">0</span>%)</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-primary" id="regularUsersBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Администраторы</span>
+                            <span class="fw-bold small"><span id="adminsCount">0</span> (<span id="adminsPercent">0</span>%)</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-danger" id="adminsBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Заблокированные</span>
+                            <span class="fw-bold small"><span id="blockedCount">0</span> (<span id="blockedPercent">0</span>%)</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-warning" id="blockedBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-robot"></i> Информация о боте</h5>
+            </div>
+            <div class="card-body" id="botGeneralInfo">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-line"></i> Статус системы</h5>
+            </div>
+            <div class="card-body" id="systemStatus">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-cog"></i> Настройки бота</h5>
+            </div>
+            <div class="card-body" id="botConfig">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка настроек...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modules and Plugins -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-puzzle-piece"></i> Загруженные модули</h5>
+            </div>
+            <div class="card-body" id="modulesList">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка модулей...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-plug"></i> Активные плагины</h5>
+            </div>
+            <div class="card-body" id="pluginsList">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка плагинов...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Endpoints -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fas fa-network-wired"></i> API Endpoints</h5>
+                <button class="btn btn-sm btn-outline-primary" id="refreshBotInfoBtn" onclick="refreshBotInfo()">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+            </div>
+            <div class="card-body" id="apiEndpoints">
+                <p><i class="fas fa-spinner fa-spin"></i> Загрузка endpoints...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let infoInterval = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatistics();
+    loadBotInfo();
+    infoInterval = setInterval(loadStatistics, 30000); // Refresh stats every 30 seconds
+});
+
+// Очистка при уходе со страницы
+window.addEventListener('beforeunload', function() {
+    if (infoInterval) {
+        clearInterval(infoInterval);
+    }
+});
+
+// Функции из dashboard.html
+async function loadStatistics() {
+    try {
+        const response = await fetch('/api/statistics');
+        const data = await response.json();
+
+        if (data.success) {
+            const stats = data.statistics;
+
+            // Update main stats
+            document.getElementById('totalUsers').textContent = stats.users?.total || 0;
+            document.getElementById('activeToday').textContent = stats.users?.active_today || 0;
+
+            // Calculate user distribution
+            const regularUsers = stats.users?.regular_users || 0;
+            const admins = (stats.users?.admins || 0) + (stats.users?.super_admins || 0);
+            const blocked = stats.users?.blocked || 0;
+            const total = stats.users?.total || 1;
+
+            // Calculate percentages
+            const regularPercent = Math.round((regularUsers / total) * 100);
+            const adminsPercent = Math.round((admins / total) * 100);
+            const blockedPercent = Math.round((blocked / total) * 100);
+
+            // Update regular users
+            document.getElementById('regularUsersCount').textContent = regularUsers;
+            document.getElementById('regularUsersPercent').textContent = regularPercent;
+            document.getElementById('regularUsersBar').style.width = regularPercent + '%';
+
+            // Update admins
+            document.getElementById('adminsCount').textContent = admins;
+            document.getElementById('adminsPercent').textContent = adminsPercent;
+            document.getElementById('adminsBar').style.width = adminsPercent + '%';
+
+            // Update blocked
+            document.getElementById('blockedCount').textContent = blocked;
+            document.getElementById('blockedPercent').textContent = blockedPercent;
+            document.getElementById('blockedBar').style.width = blockedPercent + '%';
+        } else {
+            console.error('API returned error:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+        showNotification('Ошибка загрузки статистики', 'error');
+    }
+}
+
+// Функции из bot_info.html
+async function refreshBotInfo() {
+    const btn = document.getElementById('refreshBotInfoBtn');
+    const icon = btn.querySelector('i');
+
+    btn.disabled = true;
+    icon.classList.add('fa-spin');
+
+    try {
+        await loadBotInfo();
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            icon.classList.remove('fa-spin');
+        }, 300);
+    }
+}
+
+async function loadBotInfo() {
+    try {
+        const data = await ApiClient.get('/api/bot/info');
+
+        if (data.success) {
+            renderBotGeneralInfo(data.bot_info);
+            renderSystemStatus(data.bot_info);
+            renderBotConfig(data.bot_info);
+            renderModules(data.bot_info.modules);
+            renderPlugins(data.bot_info.plugins);
+            renderApiEndpoints(data.bot_info.api_endpoints);
+        } else {
+            showError('Ошибка загрузки информации о боте');
+        }
+    } catch (error) {
+        console.error('Error loading bot info:', error);
+        showError('Ошибка соединения');
+    }
+}
+
+function renderBotGeneralInfo(info) {
+    const html = `
+        <table class="table table-sm">
+            <tbody>
+                <tr>
+                    <td><strong>Имя бота:</strong></td>
+                    <td>${info.bot_name || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Username:</strong></td>
+                    <td>@${info.bot_username || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Bot ID:</strong></td>
+                    <td>${info.bot_id || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Версия:</strong></td>
+                    <td>${info.version || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Uptime:</strong></td>
+                    <td>${formatUptime(info.uptime_seconds)}</td>
+                </tr>
+                <tr>
+                    <td><strong>Статус:</strong></td>
+                    <td><span class="badge bg-success">Running</span></td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+    document.getElementById('botGeneralInfo').innerHTML = html;
+}
+
+function renderSystemStatus(info) {
+    const html = `
+        <table class="table table-sm">
+            <tbody>
+                <tr>
+                    <td><strong>CPU:</strong></td>
+                    <td>${info.system?.cpu_percent || 'N/A'}%</td>
+                </tr>
+                <tr>
+                    <td><strong>Memory:</strong></td>
+                    <td>${info.system?.memory_percent || 'N/A'}%</td>
+                </tr>
+                <tr>
+                    <td><strong>API Host:</strong></td>
+                    <td>${info.api_host || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>API Port:</strong></td>
+                    <td>${info.api_port || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Всего пользователей:</strong></td>
+                    <td>${info.total_users || 0}</td>
+                </tr>
+                <tr>
+                    <td><strong>Активных пользователей:</strong></td>
+                    <td>${info.active_users || 0}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+    document.getElementById('systemStatus').innerHTML = html;
+}
+
+function renderBotConfig(info) {
+    const config = info.config || {};
+
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-database"></i> База данных</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>Тип:</strong></td>
+                            <td>${config.database_type || 'SQLite'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Путь:</strong></td>
+                            <td><code>${config.database_path || 'N/A'}</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-file-alt"></i> Логирование</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>Уровень:</strong></td>
+                            <td>${config.log_level || 'INFO'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Путь:</strong></td>
+                            <td><code>${config.log_path || 'N/A'}</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6><i class="fas fa-language"></i> Локализация</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>Язык по умолчанию:</strong></td>
+                            <td>${config.default_language || 'ru'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Доступные языки:</strong></td>
+                            <td>${config.available_languages?.join(', ') || 'ru, en'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-shield-alt"></i> Безопасность</h6>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>API ключи активны:</strong></td>
+                            <td>${config.api_keys_count || 0}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Whitelist режим:</strong></td>
+                            <td>${config.whitelist_enabled ? 'Включен' : 'Выключен'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    document.getElementById('botConfig').innerHTML = html;
+}
+
+function renderModules(modules) {
+    if (!modules || modules.length === 0) {
+        document.getElementById('modulesList').innerHTML =
+            '<div class="alert alert-info">Нет загруженных модулей</div>';
+        return;
+    }
+
+    const html = `
+        <table class="table table-sm">
+            <tbody>
+                ${modules.map(module => {
+                    const isEnabled = module.enabled !== undefined ? module.enabled : true;
+                    const badgeClass = isEnabled ? 'bg-success' : 'bg-secondary';
+                    const badgeText = isEnabled ? 'Enabled' : 'Disabled';
+                    const iconClass = isEnabled ? 'fa-cube text-primary' : 'fa-cube text-muted';
+
+                    return `
+                        <tr>
+                            <td>
+                                <i class="fas ${iconClass}"></i>
+                                ${module.name}
+                                ${module.version ? `<small class="text-muted ms-1">v${module.version}</small>` : ''}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+    document.getElementById('modulesList').innerHTML = html;
+}
+
+function renderPlugins(plugins) {
+    if (!plugins || plugins.length === 0) {
+        document.getElementById('pluginsList').innerHTML =
+            '<div class="alert alert-info">Нет плагинов</div>';
+        return;
+    }
+
+    const html = `
+        <table class="table table-sm">
+            <tbody>
+                ${plugins.map(plugin => {
+                    const isEnabled = plugin.enabled !== undefined ? plugin.enabled : false;
+                    const isLoaded = plugin.loaded !== undefined ? plugin.loaded : false;
+
+                    // Определяем цвет и текст статуса
+                    let badgeClass = 'bg-secondary';
+                    let badgeText = 'Disabled';
+                    let iconClass = 'fa-plug text-muted';
+
+                    if (isEnabled && isLoaded) {
+                        badgeClass = 'bg-success';
+                        badgeText = 'Enabled';
+                        iconClass = 'fa-plug text-success';
+                    } else if (isEnabled && !isLoaded) {
+                        badgeClass = 'bg-warning';
+                        badgeText = 'Error';
+                        iconClass = 'fa-plug text-warning';
+                    }
+
+                    return `
+                        <tr>
+                            <td>
+                                <i class="fas ${iconClass}"></i>
+                                ${plugin.name}
+                                ${plugin.version ? `<small class="text-muted ms-1">v${plugin.version}</small>` : ''}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+    document.getElementById('pluginsList').innerHTML = html;
+}
+
+function renderApiEndpoints(endpoints) {
+    if (!endpoints || endpoints.length === 0) {
+        document.getElementById('apiEndpoints').innerHTML =
+            '<div class="alert alert-info">Нет доступных endpoints</div>';
+        return;
+    }
+
+    const groupedEndpoints = {};
+    endpoints.forEach(ep => {
+        const category = ep.category || 'Other';
+        if (!groupedEndpoints[category]) {
+            groupedEndpoints[category] = [];
+        }
+        groupedEndpoints[category].push(ep);
+    });
+
+    let html = '';
+    for (const [category, eps] of Object.entries(groupedEndpoints)) {
+        html += `
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="fas fa-folder"></i> ${category}</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${eps.map(ep => `
+                                <tr>
+                                    <td><span class="badge bg-${getMethodColor(ep.method)}">${ep.method}</span></td>
+                                    <td><code>${ep.path}</code></td>
+                                    <td>${ep.description || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById('apiEndpoints').innerHTML = html;
+}
+
+function getMethodColor(method) {
+    const colors = {
+        'GET': 'info',
+        'POST': 'success',
+        'PUT': 'warning',
+        'DELETE': 'danger',
+        'PATCH': 'secondary'
+    };
+    return colors[method] || 'secondary';
+}
+
+function formatUptime(seconds) {
+    if (!seconds) return 'N/A';
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+
+    return parts.join(' ') || '< 1m';
+}
+
+function showError(message) {
+    const errorHtml = `<div class="alert alert-danger">${message}</div>`;
+    document.getElementById('botGeneralInfo').innerHTML = errorHtml;
+    document.getElementById('systemStatus').innerHTML = errorHtml;
+    document.getElementById('botConfig').innerHTML = errorHtml;
+    document.getElementById('modulesList').innerHTML = errorHtml;
+    document.getElementById('pluginsList').innerHTML = errorHtml;
+    document.getElementById('apiEndpoints').innerHTML = errorHtml;
+}
+
+// Общая функция для уведомлений
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+    `;
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.card {
+    transition: all 0.15s;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+code {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}

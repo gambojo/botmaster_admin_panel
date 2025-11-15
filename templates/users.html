@@ -1,0 +1,985 @@
+{% extends "base.html" %}
+
+{% block title %}Users Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-users"></i> Users Management</h1>
+        <p class="text-muted">Управление пользователями бота</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Фильтры</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="searchInput" class="form-label">Поиск</label>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Имя или username">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="roleFilter" class="form-label">Роль</label>
+                        <select class="form-select" id="roleFilter">
+                            <option value="">Все роли</option>
+                            <option value="USER">Пользователь</option>
+                            <option value="ADMIN">Админ</option>
+                            <option value="SUPER_ADMIN">Супер Админ</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="statusFilter" class="form-label">Статус</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">Все</option>
+                            <option value="false">Активные</option>
+                            <option value="true">Заблокированные</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="loadUsers()">
+                            <i class="fas fa-search"></i> Найти
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Список пользователей</h5>
+            </div>
+            <div class="card-body">
+                <div id="usersTable">
+                    <p><i class="fas fa-spinner fa-spin"></i> Загрузка пользователей...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" id="userModalTitle">Информация о пользователе</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body" id="userModalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Message Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title">Создать пост для пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sendMessageForm" enctype="multipart/form-data">
+                    <input type="hidden" id="messageUserId">
+
+                    <!-- Тип медиа -->
+                    <div class="mb-3">
+                        <label class="form-label">Тип контента</label>
+                        <select class="form-select" id="mediaType">
+                            <option value="text">Только текст</option>
+                            <option value="photo">Фото с текстом</option>
+                            <option value="video">Видео с текстом</option>
+                            <option value="document">Документ с текстом</option>
+                        </select>
+                    </div>
+
+                    <!-- Загрузка файла -->
+                    <div class="mb-3" id="mediaUploadBlock" style="display: none;">
+                        <label for="mediaFile" class="form-label">Файл</label>
+                        <input type="file" class="form-control" id="mediaFile" accept="image/*,video/*,*/*">
+                        <div class="form-text">
+                            Фото: JPG, PNG до 10MB | Видео: MP4, MOV до 50MB | Документ: любой формат до 50MB
+                        </div>
+                        <!-- Превью -->
+                        <div id="mediaPreview" class="mt-2" style="display: none;">
+                            <img id="imagePreview" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
+                            <video id="videoPreview" controls style="max-width: 100%; max-height: 200px; border-radius: 8px; display: none;"></video>
+                        </div>
+                    </div>
+
+                    <!-- Текст сообщения -->
+                    <div class="mb-3">
+                        <label for="messageText" class="form-label">
+                            Текст сообщения (HTML)
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleHtmlHelp()">
+                                <i class="fas fa-question-circle"></i> Справка
+                            </button>
+                        </label>
+                        <textarea class="form-control font-monospace" id="messageText" rows="6"
+                                  placeholder="Введите текст. Поддерживается HTML форматирование..."></textarea>
+
+                        <!-- HTML подсказки -->
+                        <div id="htmlHelp" class="alert alert-info mt-2" style="display: none; font-size: 0.85rem; max-height: 400px; overflow-y: auto;">
+                            <strong>📝 Форматирование текста:</strong><br>
+                            <code>&lt;b&gt;жирный&lt;/b&gt;</code> или <code>&lt;strong&gt;жирный&lt;/strong&gt;</code> - <b>жирный текст</b><br>
+                            <code>&lt;i&gt;курсив&lt;/i&gt;</code> или <code>&lt;em&gt;курсив&lt;/em&gt;</code> - <i>курсивный текст</i><br>
+                            <code>&lt;u&gt;подчеркнутый&lt;/u&gt;</code> - <u>подчеркнутый текст</u><br>
+                            <code>&lt;s&gt;зачеркнутый&lt;/s&gt;</code> или <code>&lt;strike&gt;...&lt;/strike&gt;</code> или <code>&lt;del&gt;...&lt;/del&gt;</code> - <s>зачеркнутый текст</s><br>
+                            <code>&lt;code&gt;моноширинный&lt;/code&gt;</code> - <code>моноширинный код</code><br>
+                            <code>&lt;pre&gt;блок кода&lt;/pre&gt;</code> - блок кода (многострочный)<br>
+                            <br>
+                            <strong>🔗 Ссылки и элементы:</strong><br>
+                            <code>&lt;a href="https://example.com"&gt;текст ссылки&lt;/a&gt;</code> - обычная ссылка<br>
+                            <code>&lt;a href="tg://user?id=USER_ID"&gt;имя&lt;/a&gt;</code> - упоминание пользователя<br>
+                            <code>&lt;blockquote&gt;цитата&lt;/blockquote&gt;</code> - выделение цитат<br>
+                            <code>&lt;li&gt;Пункт списка&lt;/li&gt;</code> - элемент списка<br>
+                            <br>
+                            <strong>⚠️ Экранирование символов:</strong><br>
+                            <code>&amp;</code> → <code>&amp;amp;</code><br>
+                            <code>&lt;</code> → <code>&amp;lt;</code><br>
+                            <code>&gt;</code> → <code>&amp;gt;</code><br>
+                            <code>"</code> → <code>&amp;quot;</code><br>
+                            <br>
+                            <small class="text-muted">Используйте экранирование, если эти символы должны отображаться как текст, а не как HTML теги.</small>
+                        </div>
+                    </div>
+
+                    <!-- Превью сообщения -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="previewMessage()">
+                            <i class="fas fa-eye"></i> Предпросмотр
+                        </button>
+                        <div id="messagePreview" class="mt-2 p-3 border rounded" style="display: none; background: #f8f9fa;">
+                            <div id="previewContent"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-paper-plane"></i> Отправить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Groups Management Modal -->
+<div class="modal fade" id="userGroupsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" id="userGroupsModalTitle">Управление группами пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body" id="userGroupsModalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUsers = [];
+let userModal, messageModal, userGroupsModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    userModal = new bootstrap.Modal(document.getElementById('userModal'));
+    messageModal = new bootstrap.Modal(document.getElementById('messageModal'));
+    userGroupsModal = new bootstrap.Modal(document.getElementById('userGroupsModal'));
+
+    loadUsers();
+});
+
+async function loadUsers() {
+    try {
+        const search = document.getElementById('searchInput').value;
+        const role = document.getElementById('roleFilter').value;
+        const blocked = document.getElementById('statusFilter').value;
+
+        let url = '/api/users?';
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (role) url += `role=${role}&`;
+        if (blocked) url += `blocked=${blocked}&`;
+
+        const data = await ApiClient.get(url);
+
+        if (data.success) {
+            currentUsers = data.users;
+            renderUsersTable(data.users);
+        } else {
+            document.getElementById('usersTable').innerHTML =
+                '<div class="alert alert-danger">Ошибка загрузки пользователей</div>';
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('usersTable').innerHTML =
+            '<div class="alert alert-danger">Ошибка соединения</div>';
+    }
+}
+
+function renderUsersTable(users) {
+    if (users.length === 0) {
+        document.getElementById('usersTable').innerHTML =
+            '<div class="alert alert-info">Пользователи не найдены</div>';
+        return;
+    }
+
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile) {
+        // Mobile version - compact cards with toggle actions
+        const cardsHtml = `
+            <div class="users-mobile-list">
+                ${users.map(user => `
+                    <div class="user-card-mobile">
+                        <div class="user-card-header" onclick="viewUserDetails(${user.id})">
+                            <div class="user-info">
+                                <div class="user-name">${user.first_name} ${user.last_name || ''}</div>
+                                <div class="user-username">@${user.username || 'N/A'}</div>
+                            </div>
+                            <div class="user-status">
+                                ${user.is_blocked ?
+                                    '<span class="badge bg-danger">Заблокирован</span>' :
+                                    '<span class="badge bg-success">Активен</span>'}
+                            </div>
+                        </div>
+                        <div class="user-card-footer">
+                            <div class="user-footer-info">
+                                <span class="user-id">ID: ${user.id}</span>
+                                <span class="user-role badge bg-primary">${user.role}</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary toggle-actions-btn"
+                                    onclick="toggleUserActions(event, ${user.id})"
+                                    title="Действия">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                        <div class="user-actions-menu" id="actions-${user.id}" style="display: none;">
+                            <button class="btn btn-sm btn-outline-info w-100 mb-2" onclick="viewUserDetails(${user.id})">
+                                <i class="fas fa-eye"></i> Подробнее
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="showMessageModal(${user.id}, '${user.first_name}')">
+                                <i class="fas fa-envelope"></i> Сообщение
+                            </button>
+                            ${!user.is_blocked ?
+                                `<button class="btn btn-sm btn-outline-warning w-100 mb-2" onclick="blockUser(${user.id})">
+                                    <i class="fas fa-ban"></i> Заблокировать
+                                </button>` :
+                                `<button class="btn btn-sm btn-outline-success w-100 mb-2" onclick="unblockUser(${user.id})">
+                                    <i class="fas fa-check"></i> Разблокировать
+                                </button>`
+                            }
+                            <button class="btn btn-sm btn-outline-danger w-100" onclick="deleteUser(${user.id})">
+                                <i class="fas fa-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        document.getElementById('usersTable').innerHTML = cardsHtml;
+    } else {
+        // Desktop version - table with actions
+        const tableHtml = `
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Имя</th>
+                            <th>Роль</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.id}</td>
+                                <td>@${user.username || 'N/A'}</td>
+                                <td>${user.first_name} ${user.last_name || ''}</td>
+                                <td><span class="badge bg-primary">${user.role}</span></td>
+                                <td>${user.is_blocked ?
+                                    '<span class="badge bg-danger">Заблокирован</span>' :
+                                    '<span class="badge bg-success">Активен</span>'}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-info" onclick="viewUserDetails(${user.id})" title="Подробнее">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-primary" onclick="showMessageModal(${user.id}, '${user.first_name}')" title="Сообщение">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                        ${!user.is_blocked ?
+                                            `<button class="btn btn-outline-warning" onclick="blockUser(${user.id})" title="Заблокировать">
+                                                <i class="fas fa-ban"></i>
+                                            </button>` :
+                                            `<button class="btn btn-outline-success" onclick="unblockUser(${user.id})" title="Разблокировать">
+                                                <i class="fas fa-check"></i>
+                                            </button>`
+                                        }
+                                        <button class="btn btn-outline-danger" onclick="deleteUser(${user.id})" title="Удалить">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        document.getElementById('usersTable').innerHTML = tableHtml;
+    }
+}
+
+async function viewUserDetails(userId, skipShowModal = false) {
+    try {
+        const data = await ApiClient.get(`/api/users/${userId}`);
+
+        if (data.success) {
+            const user = data.user;
+            currentUserIdInModal = userId; // Сохраняем ID текущего пользователя
+
+            const created = user.created_at ? new Date(user.created_at).toLocaleString('ru-RU') : 'N/A';
+            const lastActivity = user.last_activity ? new Date(user.last_activity).toLocaleString('ru-RU') : 'N/A';
+
+            const groupsList = user.groups && user.groups.length > 0
+                ? user.groups.map(g => `<span class="badge bg-info me-1">${g}</span>`).join('')
+                : '<span class="text-muted">Нет групп</span>';
+
+            document.getElementById('userModalBody').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Основная информация</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>ID:</strong></td><td>${user.id}</td></tr>
+                            <tr><td><strong>Username:</strong></td><td>@${user.username || 'N/A'}</td></tr>
+                            <tr><td><strong>Имя:</strong></td><td>${user.first_name} ${user.last_name || ''}</td></tr>
+                            <tr><td><strong>Роль:</strong></td><td><span class="badge bg-primary">${user.role}</span></td></tr>
+                            <tr><td><strong>Статус:</strong></td><td>
+                                ${user.is_blocked ?
+                                    '<span class="badge bg-danger">Заблокирован</span>' :
+                                    '<span class="badge bg-success">Активен</span>'}
+                            </td></tr>
+                        </table>
+
+                        <h6 class="mt-3">Дополнительная информация</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Группы:</strong></td>
+                                <td>${groupsList}</td>
+                            </tr>
+                            <tr><td><strong>Регистрация:</strong></td><td>${created}</td></tr>
+                            <tr><td><strong>Последняя активность:</strong></td><td>${lastActivity}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Действия</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-primary" onclick="showMessageModal(${user.id}, '${user.first_name}')">
+                                <i class="fas fa-envelope"></i> Отправить сообщение
+                            </button>
+                            ${!user.is_blocked ?
+                                `<button class="btn btn-sm btn-warning" onclick="blockUser(${user.id})">
+                                    <i class="fas fa-ban"></i> Заблокировать
+                                </button>` :
+                                `<button class="btn btn-sm btn-success" onclick="unblockUser(${user.id})">
+                                    <i class="fas fa-check"></i> Разблокировать
+                                </button>`
+                            }
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">
+                                <i class="fas fa-trash"></i> Удалить пользователя
+                            </button>
+                        </div>
+
+                        <h6 class="mt-3">Управление ролью</h6>
+                        <div class="d-grid gap-2">
+                            ${user.role.toUpperCase() !== 'SUPER_ADMIN' ? `
+                                <button class="btn btn-sm btn-outline-${user.role.toUpperCase() === 'ADMIN' ? 'secondary' : 'warning'}"
+                                        onclick="changeUserRole(${user.id}, '${user.role.toUpperCase() === 'ADMIN' ? 'USER' : 'ADMIN'}')">
+                                    <i class="fas fa-${user.role.toUpperCase() === 'ADMIN' ? 'user' : 'user-shield'}"></i>
+                                    ${user.role.toUpperCase() === 'ADMIN' ? 'Сделать пользователем' : 'Сделать администратором'}
+                                </button>
+                            ` : '<span class="text-muted">Супер-админ (роль нельзя изменить)</span>'}
+                        </div>
+
+                        <h6 class="mt-3">Управление группами</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-outline-info" onclick="showUserGroupsModal(${user.id})">
+                                <i class="fas fa-users"></i> Управление группами
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (!skipShowModal) {
+                userModal.show();
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user details:', error);
+        alert('Ошибка загрузки данных пользователя');
+    }
+}
+
+function showMessageModal(userId, userName) {
+    document.getElementById('messageUserId').value = userId;
+    document.getElementById('messageText').value = '';
+    document.getElementById('mediaType').value = 'text';
+    document.getElementById('mediaFile').value = '';
+    document.getElementById('mediaUploadBlock').style.display = 'none';
+    document.getElementById('mediaPreview').style.display = 'none';
+    document.getElementById('messagePreview').style.display = 'none';
+    document.getElementById('htmlHelp').style.display = 'none';
+    document.querySelector('#messageModal .modal-title').textContent = `Создать пост для пользователя: ${userName}`;
+    messageModal.show();
+}
+
+// Обработчик изменения типа медиа
+document.addEventListener('DOMContentLoaded', function() {
+    const mediaTypeSelect = document.getElementById('mediaType');
+    const mediaFileInput = document.getElementById('mediaFile');
+    const sendMessageForm = document.getElementById('sendMessageForm');
+
+    if (mediaTypeSelect) {
+        mediaTypeSelect.addEventListener('change', function() {
+            const uploadBlock = document.getElementById('mediaUploadBlock');
+            const fileInput = document.getElementById('mediaFile');
+
+            if (this.value === 'text') {
+                uploadBlock.style.display = 'none';
+                fileInput.value = '';
+                document.getElementById('mediaPreview').style.display = 'none';
+            } else {
+                uploadBlock.style.display = 'block';
+
+                // Обновляем accept атрибут в зависимости от типа
+                if (this.value === 'photo') {
+                    fileInput.accept = 'image/*';
+                } else if (this.value === 'video') {
+                    fileInput.accept = 'video/*';
+                } else if (this.value === 'document') {
+                    fileInput.accept = '*/*';
+                }
+            }
+        });
+    }
+
+    if (mediaFileInput) {
+        mediaFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const previewContainer = document.getElementById('mediaPreview');
+            const imagePreview = document.getElementById('imagePreview');
+            const videoPreview = document.getElementById('videoPreview');
+
+            // Скрываем оба превью
+            imagePreview.style.display = 'none';
+            videoPreview.style.display = 'none';
+
+            const mediaType = document.getElementById('mediaType').value;
+
+            if (mediaType === 'photo' && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else if (mediaType === 'video' && file.type.startsWith('video/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    videoPreview.src = e.target.result;
+                    videoPreview.style.display = 'block';
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        });
+    }
+
+    if (sendMessageForm) {
+        sendMessageForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await sendMessage();
+        });
+    }
+});
+
+function toggleHtmlHelp() {
+    const helpDiv = document.getElementById('htmlHelp');
+    helpDiv.style.display = helpDiv.style.display === 'none' ? 'block' : 'none';
+}
+
+function previewMessage() {
+    const messageText = document.getElementById('messageText').value;
+    const previewDiv = document.getElementById('messagePreview');
+    const previewContent = document.getElementById('previewContent');
+
+    if (!messageText.trim()) {
+        alert('Введите текст для предпросмотра');
+        return;
+    }
+
+    // Простой рендеринг HTML
+    previewContent.innerHTML = messageText;
+    previewDiv.style.display = 'block';
+}
+
+async function sendMessage() {
+    const userId = document.getElementById('messageUserId').value;
+    const messageText = document.getElementById('messageText').value;
+    const mediaType = document.getElementById('mediaType').value;
+    const mediaFile = document.getElementById('mediaFile').files[0];
+
+    if (!messageText.trim() && mediaType === 'text') {
+        alert('Введите текст сообщения');
+        return;
+    }
+
+    if (mediaType !== 'text' && !mediaFile) {
+        alert('Выберите файл для отправки');
+        return;
+    }
+
+    try {
+        let response;
+
+        if (mediaType === 'text') {
+            // Для текста используем JSON
+            response = await fetch(`/api/users/${userId}/message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: messageText,
+                    media_type: 'text'
+                }),
+                credentials: 'include'
+            });
+        } else {
+            // Для медиа используем FormData
+            const formData = new FormData();
+            formData.append('message', messageText);
+            formData.append('media_type', mediaType);
+            formData.append('media', mediaFile);
+
+            response = await fetch(`/api/users/${userId}/message`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Сообщение отправлено!');
+            messageModal.hide();
+            document.getElementById('messageText').value = '';
+            document.getElementById('mediaFile').value = '';
+            document.getElementById('mediaType').value = 'text';
+            document.getElementById('mediaUploadBlock').style.display = 'none';
+            document.getElementById('messagePreview').style.display = 'none';
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось отправить сообщение'));
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Ошибка отправки сообщения');
+    }
+}
+
+async function blockUser(userId) {
+    if (!confirm('Вы уверены, что хотите заблокировать этого пользователя?')) {
+        return;
+    }
+
+    try {
+        const data = await ApiClient.post(`/api/users/${userId}/block`);
+
+        if (data.success) {
+            alert('Пользователь заблокирован');
+            userModal.hide();
+            loadUsers();
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось заблокировать'));
+        }
+    } catch (error) {
+        console.error('Error blocking user:', error);
+        alert('Ошибка блокировки');
+    }
+}
+
+async function unblockUser(userId) {
+    try {
+        const data = await ApiClient.post(`/api/users/${userId}/unblock`);
+
+        if (data.success) {
+            alert('Пользователь разблокирован');
+            userModal.hide();
+            loadUsers();
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось разблокировать'));
+        }
+    } catch (error) {
+        console.error('Error unblocking user:', error);
+        alert('Ошибка разблокировки');
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Вы уверены, что хотите УДАЛИТЬ этого пользователя? Это действие необратимо!')) {
+        return;
+    }
+
+    try {
+        const data = await ApiClient.delete(`/api/users/${userId}`);
+
+        if (data.success) {
+            alert('Пользователь удален');
+            userModal.hide();
+            loadUsers();
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось удалить'));
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Ошибка удаления');
+    }
+}
+
+function toggleUserActions(event, userId) {
+    if (event) {
+        event.stopPropagation(); // Prevent card click event
+        event.preventDefault(); // Prevent default button behavior
+    }
+
+    const actionsMenu = document.getElementById(`actions-${userId}`);
+    const allMenus = document.querySelectorAll('.user-actions-menu');
+
+    // Проверяем текущее состояние меню ДО его изменения
+    const isCurrentlyVisible = actionsMenu.style.display === 'block';
+
+    // Close all menus first
+    allMenus.forEach(menu => {
+        menu.style.display = 'none';
+    });
+
+    // Toggle current menu (если было скрыто - показываем, если показано - оставляем скрытым)
+    if (!isCurrentlyVisible) {
+        actionsMenu.style.display = 'block';
+    }
+}
+
+async function showUserGroupsModal(userId) {
+    try {
+        // Загружаем информацию о пользователе и доступных группах
+        const [userData, groupsData] = await Promise.all([
+            ApiClient.get(`/api/users/${userId}`),
+            ApiClient.get('/api/groups')
+        ]);
+
+        if (!userData.success || !groupsData.success) {
+            alert('Ошибка загрузки данных');
+            return;
+        }
+
+        const user = userData.user;
+        const allGroups = groupsData.groups;
+        const userGroups = user.groups || [];
+
+        document.getElementById('userGroupsModalTitle').textContent =
+            `Управление группами: ${user.first_name}`;
+
+        let html = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Группы пользователя</h6>
+                    <div id="currentGroupsList">
+                        ${userGroups.length > 0 ? `
+                            <div class="list-group">
+                                ${userGroups.map(groupName => `
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-users text-info"></i> ${groupName}</span>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                onclick="removeUserFromGroupInModal(${userId}, '${groupName}')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="text-muted">Пользователь не состоит ни в одной группе</p>'}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Добавить в группу</h6>
+                    <div class="list-group">
+                        ${allGroups.filter(g => !userGroups.includes(g.name)).map(group => `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-users text-secondary"></i> ${group.name}</span>
+                                <button class="btn btn-sm btn-outline-success"
+                                        onclick="addUserToGroupInModal(${userId}, '${group.name}')">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        `).join('') || '<p class="text-muted">Нет доступных групп</p>'}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('userGroupsModalBody').innerHTML = html;
+        userGroupsModal.show();
+
+    } catch (error) {
+        console.error('Error loading user groups:', error);
+        alert('Ошибка загрузки групп');
+    }
+}
+
+async function addUserToGroupInModal(userId, groupName) {
+    try {
+        const data = await ApiClient.post(`/api/groups/${groupName}/users`, {
+            user_id: userId
+        });
+
+        if (data.success) {
+            alert('Пользователь добавлен в группу');
+            await showUserGroupsModal(userId); // Обновляем модальное окно
+            // Обновляем основное модальное окно с информацией о пользователе, если оно открыто
+            await refreshUserDetailsIfOpen(userId);
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось добавить'));
+        }
+    } catch (error) {
+        console.error('Error adding user to group:', error);
+        alert('Ошибка добавления в группу');
+    }
+}
+
+async function removeUserFromGroupInModal(userId, groupName) {
+    if (!confirm(`Удалить пользователя из группы "${groupName}"?`)) {
+        return;
+    }
+
+    try {
+        const data = await ApiClient.delete(`/api/groups/${groupName}/users/${userId}`);
+
+        if (data.success) {
+            alert('Пользователь удален из группы');
+            await showUserGroupsModal(userId); // Обновляем модальное окно
+            // Обновляем основное модальное окно с информацией о пользователе, если оно открыто
+            await refreshUserDetailsIfOpen(userId);
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось удалить'));
+        }
+    } catch (error) {
+        console.error('Error removing user from group:', error);
+        alert('Ошибка удаления из группы');
+    }
+}
+
+// Функция для обновления информации о пользователе, если модальное окно открыто
+let currentUserIdInModal = null;
+
+async function refreshUserDetailsIfOpen(userId) {
+    if (currentUserIdInModal === userId) {
+        // Если модальное окно с этим пользователем открыто, обновляем его
+        await viewUserDetails(userId, true); // true = не открывать заново, только обновить
+    }
+}
+
+async function changeUserRole(userId, newRole) {
+    const roleText = newRole === 'ADMIN' ? 'администратором' : 'пользователем';
+    if (!confirm(`Вы уверены, что хотите сделать этого пользователя ${roleText}?`)) {
+        return;
+    }
+
+    try {
+        console.log('Sending PUT request to:', `/api/users/${userId}/role`);
+        console.log('With data:', { role: newRole });
+
+        const data = await ApiClient.put(`/api/users/${userId}/role`, {
+            role: newRole
+        });
+
+        console.log('Received response:', data);
+
+        if (data.success) {
+            // Проверяем, была ли роль уже такой же
+            if (data.message && data.message.includes('already has role')) {
+                alert('Пользователь уже имеет эту роль');
+            } else {
+                alert(`Роль пользователя успешно изменена на ${roleText}`);
+            }
+            await viewUserDetails(userId, true); // Обновляем информацию
+            loadUsers(); // Обновляем список пользователей
+        } else {
+            // Более информативные сообщения об ошибках
+            let errorMsg = 'Не удалось изменить роль';
+            if (data.error) {
+                if (data.error.includes('SUPER_ADMIN')) {
+                    errorMsg = 'Нельзя изменить роль супер-администратора';
+                } else if (data.error.includes('Cannot assign SUPER_ADMIN')) {
+                    errorMsg = 'Нельзя назначить роль супер-администратора через интерфейс';
+                } else if (data.error.includes('User not found')) {
+                    errorMsg = 'Пользователь не найден';
+                } else if (data.error.includes('Unauthorized')) {
+                    errorMsg = 'Ошибка авторизации. Перезайдите в админ панель.';
+                } else {
+                    errorMsg = data.error;
+                }
+            }
+            alert('Ошибка: ' + errorMsg);
+        }
+    } catch (error) {
+        console.error('Error changing user role:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+        alert('Ошибка связи с сервером: ' + error.message + '\n\nПроверьте консоль браузера (F12) для деталей.');
+    }
+}
+
+// Resize handler
+window.addEventListener('resize', function() {
+    if (currentUsers.length > 0) {
+        renderUsersTable(currentUsers);
+    }
+});
+</script>
+
+<style>
+/* Mobile user cards */
+.users-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.user-card-mobile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.user-card-mobile:hover {
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.user-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.user-username {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.user-status {
+    margin-left: 0.5rem;
+}
+
+.user-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.8rem;
+}
+
+.user-footer-info {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.user-id {
+    color: var(--text-muted);
+}
+
+.user-role {
+    font-size: 0.75rem;
+}
+
+.toggle-actions-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.user-actions-menu {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal styling */
+.modal-content .table {
+    color: var(--text-primary);
+}
+
+.modal-content .table td {
+    border-color: var(--border-color);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-clipboard-list"></i> System Logs</h1>
+        <p class="text-muted">Просмотр системных логов и ошибок</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-filter"></i> Фильтры</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <label for="logLevel" class="form-label">Уровень</label>
+                        <select class="form-select" id="logLevel">
+                            <option value="all">Все уровни</option>
+                            <option value="ERROR">Ошибки</option>
+                            <option value="WARNING">Предупреждения</option>
+                            <option value="INFO">Информация</option>
+                            <option value="DEBUG">Отладка</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="logType" class="form-label">Тип</label>
+                        <select class="form-select" id="logType">
+                            <option value="all">Все логи</option>
+                            <option value="system">Системные</option>
+                            <option value="user">Пользовательские</option>
+                            <option value="admin">Админские</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="logLines" class="form-label">Строк</label>
+                        <select class="form-select" id="logLines">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="logSearch" class="form-label">Поиск</label>
+                        <input type="text" class="form-control" id="logSearch" placeholder="Введите ключевые слова...">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" id="refreshBtn" onclick="refreshLogs()">
+                            <i class="fas fa-sync-alt"></i> Обновить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> Логи системы
+                    <span class="badge bg-secondary ms-2" id="logsCount">0</span>
+                </h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                        <i class="fas fa-play"></i> Автообновление
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+                        <i class="fas fa-trash"></i> Очистить логи
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="logsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 150px;">Время</th>
+                                <th style="width: 100px;">Уровень</th>
+                                <th style="width: 150px;">Модуль</th>
+                                <th>Сообщение</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsBody">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Загрузка логов...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Logs pagination" id="paginationContainer" style="display: none;">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item disabled" id="prevPage">
+                            <a class="page-link" href="#" tabindex="-1">Назад</a>
+                        </li>
+                        <li class="page-item active">
+                            <a class="page-link" href="#" id="currentPage">1</a>
+                        </li>
+                        <li class="page-item" id="nextPage">
+                            <a class="page-link" href="#">Вперед</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== ВСТРОЕННЫЕ ФУНКЦИИ ====================
+
+// Простой ApiClient для этой страницы
+// ==================== ВСТРОЕННЫЕ ФУНКЦИИ ====================
+
+// Проверяем, не объявлен ли уже ApiClient
+if (typeof ApiClient === 'undefined') {
+    // Простой ApiClient для этой страницы
+    const ApiClient = {
+        async get(url) {
+            try {
+                const response = await fetch(url);
+                return await response.json();
+            } catch (error) {
+                console.error('GET request failed:', error);
+                throw error;
+            }
+        },
+
+        async post(url, data) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('POST request failed:', error);
+                throw error;
+            }
+        },
+
+        async delete(url) {
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE'
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('DELETE request failed:', error);
+                throw error;
+            }
+        }
+    };
+
+    // Делаем глобально доступным
+    window.ApiClient = ApiClient;
+}
+
+// Простая функция для уведомлений (заменим на console.log)
+function showSimpleMessage(message, type = 'info') {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+    // Можно добавить простой статус в интерфейсе
+    updateStatusMessage(message, type);
+}
+
+function updateStatusMessage(message, type = 'info') {
+    let statusElement = document.getElementById('statusMessage');
+    if (!statusElement) {
+        statusElement = document.createElement('div');
+        statusElement.id = 'statusMessage';
+        statusElement.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+        statusElement.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.card-body').prepend(statusElement);
+    } else {
+        statusElement.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+        statusElement.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+    }
+
+    // Автоскрытие через 5 секунд
+    setTimeout(() => {
+        if (statusElement && statusElement.parentNode) {
+            statusElement.remove();
+        }
+    }, 5000);
+}
+
+// ==================== ОСНОВНОЙ КОД ====================
+
+let autoRefreshInterval = null;
+let autoRefreshEnabled = false;
+let currentPage = 1;
+let allLogs = [];
+let filteredLogs = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Logs page loaded');
+    loadLogs();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Фильтры
+    document.getElementById('logLevel').addEventListener('change', applyFilters);
+    document.getElementById('logType').addEventListener('change', applyFilters);
+    document.getElementById('logLines').addEventListener('change', applyFilters);
+    document.getElementById('logSearch').addEventListener('input', debounce(applyFilters, 300));
+
+    // Пагинация
+    document.getElementById('prevPage').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (currentPage > 1) {
+            currentPage--;
+            renderCurrentPage();
+        }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', function(e) {
+        e.preventDefault();
+        const totalPages = Math.ceil(filteredLogs.length / getLogsPerPage());
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderCurrentPage();
+        }
+    });
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+async function refreshLogs() {
+    const btn = document.getElementById('refreshBtn');
+    const icon = btn.querySelector('i');
+
+    btn.disabled = true;
+    icon.classList.add('fa-spin');
+
+    try {
+        await loadLogs();
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            icon.classList.remove('fa-spin');
+        }, 300);
+    }
+}
+
+async function loadLogs() {
+    try {
+
+        const logLevel = document.getElementById('logLevel').value;
+        const logType = document.getElementById('logType').value;
+        const lines = document.getElementById('logLines').value;
+        const search = document.getElementById('logSearch').value;
+
+        let url = `/api/logs?lines=${lines}`;
+        if (logLevel !== 'all') {
+            url += `&level=${logLevel}`;
+        }
+        if (logType !== 'all') {
+            url += `&type=${logType}`;
+        }
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+
+        console.log('Loading logs from:', url);
+
+        const data = await ApiClient.get(url);
+
+        if (data.success) {
+            // Обрабатываем разные форматы ответа
+            let logs = [];
+
+            if (Array.isArray(data.logs)) {
+                logs = data.logs;
+            } else if (data.logs && Array.isArray(data.logs.logs)) {
+                logs = data.logs.logs;
+            } else if (typeof data.logs === 'object' && data.logs !== null) {
+                logs = Object.values(data.logs);
+            } else {
+                logs = [];
+            }
+
+            console.log('Loaded logs:', logs.length);
+
+<!--            // Сортируем логи по времени (новые сверху)-->
+<!--            logs.sort((a, b) => {-->
+<!--                const timeA = new Date(a.timestamp || a.time || a.date || 0);-->
+<!--                const timeB = new Date(b.timestamp || b.time || b.date || 0);-->
+<!--                return timeB - timeA;-->
+<!--            });-->
+
+            // Сортировка не нужна, логи уже отсортированы по времени (новые сверху) в API
+            // logs.reverse(); // Удалено - логи уже приходят в правильном порядке
+
+            allLogs = logs;
+            applyFilters();
+
+            showSimpleMessage(`Загружено ${logs.length} логов`, 'success');
+        } else {
+            console.error('API Error:', data.error);
+            showSimpleMessage('Ошибка загрузки логов: ' + (data.error || 'Неизвестная ошибка'), 'error');
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        showSimpleMessage('Ошибка соединения: ' + error.message, 'error');
+    }
+}
+
+function applyFilters() {
+    const levelFilter = document.getElementById('logLevel').value;
+    const typeFilter = document.getElementById('logType').value;
+    const searchFilter = document.getElementById('logSearch').value.toLowerCase();
+
+    filteredLogs = allLogs.filter(log => {
+        const logEntry = normalizeLogEntry(log);
+
+        // Фильтр по уровню
+        if (levelFilter !== 'all' && logEntry.level !== levelFilter) {
+            return false;
+        }
+
+        // Фильтр по типу (на основе модуля)
+        if (typeFilter !== 'all') {
+            const module = (logEntry.module || '').toLowerCase();
+            if (typeFilter === 'system' && !module.includes('system') && !module.includes('bot')) {
+                return false;
+            }
+            if (typeFilter === 'user' && !module.includes('user')) {
+                return false;
+            }
+            if (typeFilter === 'admin' && !module.includes('admin')) {
+                return false;
+            }
+        }
+
+        // Фильтр по поиску
+        if (searchFilter) {
+            const message = (logEntry.message || '').toLowerCase();
+            const module = (logEntry.module || '').toLowerCase();
+            if (!message.includes(searchFilter) && !module.includes(searchFilter)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    currentPage = 1;
+    renderCurrentPage();
+    updateLogsCount();
+}
+
+function renderCurrentPage() {
+    const logsPerPage = getLogsPerPage();
+    const startIndex = (currentPage - 1) * logsPerPage;
+    const endIndex = startIndex + logsPerPage;
+    const pageLogs = filteredLogs.slice(startIndex, endIndex);
+
+    renderLogs(pageLogs);
+    updatePagination();
+}
+
+function getLogsPerPage() {
+    return 20; // Фиксированное количество логов на странице
+}
+
+function renderLogs(logs) {
+    const logsBody = document.getElementById('logsBody');
+    const isMobile = window.innerWidth < 768;
+
+    if (logs.length === 0) {
+        logsBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-3"></i>
+                    <div>Логи не найдены</div>
+                    <small class="text-muted">Попробуйте изменить фильтры</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    try {
+        if (isMobile) {
+            // Мобильная версия - компактный вид с кликом для раскрытия
+            logsBody.innerHTML = logs.map((log, index) => {
+                const logEntry = normalizeLogEntry(log);
+                const logId = `log-${index}`;
+
+                return `
+                    <tr class="log-row-mobile ${getLogLevelClass(logEntry.level)}" onclick="toggleLogMessage('${logId}')">
+                        <td colspan="4" class="log-mobile-content">
+                            <div class="log-mobile-header">
+                                <span class="badge ${getLogLevelBadgeClass(logEntry.level)}">
+                                    <i class="${getLogLevelIcon(logEntry.level)}"></i>
+                                    ${logEntry.level || 'INFO'}
+                                </span>
+                                <span class="log-mobile-time">${formatTimestampShort(logEntry.timestamp)}</span>
+                            </div>
+                            <div class="log-mobile-module">
+                                <small>${logEntry.module || 'N/A'}</small>
+                            </div>
+                            <div id="${logId}" class="log-mobile-message" style="display: none;">
+                                <div class="log-content">${escapeHtml(logEntry.message || '')}</div>
+                                ${logEntry.details ? `<small class="text-muted">${escapeHtml(logEntry.details)}</small>` : ''}
+                            </div>
+                            <div class="log-mobile-expand">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            // Десктопная версия - полная таблица
+            logsBody.innerHTML = logs.map(log => {
+                const logEntry = normalizeLogEntry(log);
+
+                return `
+                    <tr class="log-row ${getLogLevelClass(logEntry.level)}">
+                        <td class="text-nowrap" title="${logEntry.timestamp}">
+                            ${formatTimestamp(logEntry.timestamp)}
+                        </td>
+                        <td>
+                            <span class="badge ${getLogLevelBadgeClass(logEntry.level)}">
+                                <i class="${getLogLevelIcon(logEntry.level)}"></i>
+                                ${logEntry.level || 'INFO'}
+                            </span>
+                        </td>
+                        <td class="text-nowrap">
+                            <small>${logEntry.module || 'N/A'}</small>
+                        </td>
+                        <td class="log-message">
+                            <div class="log-content">${escapeHtml(logEntry.message || '')}</div>
+                            ${logEntry.details ? `<small class="text-muted">${escapeHtml(logEntry.details)}</small>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error rendering logs:', error);
+        logsBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Ошибка отображения логов
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function toggleLogMessage(logId) {
+    const logMessage = document.getElementById(logId);
+    const logRow = logMessage.closest('.log-row-mobile');
+    const icon = logRow.querySelector('.log-mobile-expand i');
+
+    if (logMessage.style.display === 'none') {
+        logMessage.style.display = 'block';
+        icon.className = 'fas fa-chevron-up';
+    } else {
+        logMessage.style.display = 'none';
+        icon.className = 'fas fa-chevron-down';
+    }
+}
+
+function formatTimestampShort(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleString('ru-RU', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function updatePagination() {
+    const paginationContainer = document.getElementById('paginationContainer');
+    const prevPage = document.getElementById('prevPage');
+    const nextPage = document.getElementById('nextPage');
+    const currentPageElement = document.getElementById('currentPage');
+
+    const logsPerPage = getLogsPerPage();
+    const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+    if (totalPages <= 1) {
+        paginationContainer.style.display = 'none';
+        return;
+    }
+
+    paginationContainer.style.display = 'block';
+
+    // Обновляем номера страниц
+    currentPageElement.textContent = currentPage;
+
+    // Обновляем состояние кнопок
+    prevPage.classList.toggle('disabled', currentPage === 1);
+    nextPage.classList.toggle('disabled', currentPage === totalPages);
+}
+
+function updateLogsCount() {
+    const logsCount = document.getElementById('logsCount');
+    logsCount.textContent = filteredLogs.length;
+    logsCount.className = `badge ${filteredLogs.length > 0 ? 'bg-primary' : 'bg-secondary'}`;
+}
+
+function normalizeLogEntry(log) {
+    if (typeof log === 'string') {
+        return {
+            message: log,
+            level: 'INFO',
+            timestamp: new Date().toISOString(),
+            module: 'Unknown'
+        };
+    }
+
+    if (typeof log === 'object' && log !== null) {
+        return {
+            message: log.message || log.text || log.content || JSON.stringify(log),
+            level: (log.level || log.severity || 'INFO').toUpperCase(),
+            timestamp: log.timestamp || log.time || log.date || new Date().toISOString(),
+            module: log.module || log.logger || log.source || 'N/A',
+            details: log.details || log.exception || log.stack_trace
+        };
+    }
+
+    return {
+        message: String(log),
+        level: 'INFO',
+        timestamp: new Date().toISOString(),
+        module: 'Unknown'
+    };
+}
+
+function getLogLevelClass(level) {
+    const levelMap = {
+        'ERROR': '',
+        'WARNING': '',
+        'INFO': '',
+        'DEBUG': ''
+    };
+    return levelMap[level] || '';
+}
+
+function getLogLevelBadgeClass(level) {
+    const badgeMap = {
+        'ERROR': 'bg-danger',
+        'WARNING': 'bg-warning text-dark',
+        'INFO': 'bg-info text-dark',
+        'DEBUG': 'bg-secondary'
+    };
+    return badgeMap[level] || 'bg-secondary';
+}
+
+function getLogLevelIcon(level) {
+    const iconMap = {
+        'ERROR': 'fas fa-exclamation-circle',
+        'WARNING': 'fas fa-exclamation-triangle',
+        'INFO': 'fas fa-info-circle',
+        'DEBUG': 'fas fa-bug'
+    };
+    return iconMap[level] || 'fas fa-info-circle';
+}
+
+function formatTimestamp(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function toggleAutoRefresh() {
+    const btn = document.getElementById('autoRefreshBtn');
+    const icon = btn.querySelector('i');
+
+    autoRefreshEnabled = !autoRefreshEnabled;
+
+    if (autoRefreshEnabled) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        icon.className = 'fas fa-pause';
+        autoRefreshInterval = setInterval(loadLogs, 10000); // Обновлять каждые 10 секунд
+        showSimpleMessage('Автообновление включено', 'success');
+    } else {
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-secondary');
+        icon.className = 'fas fa-play';
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        showSimpleMessage('Автообновление отключено', 'info');
+    }
+}
+
+async function clearLogs() {
+    if (!confirm('Вы уверены, что хотите очистить все логи? Это действие нельзя отменить.')) {
+        return;
+    }
+
+    try {
+        // В реальном приложении здесь будет вызов API
+        // const data = await ApiClient.delete('/api/logs');
+
+        // Временная реализация
+        allLogs = [];
+        filteredLogs = [];
+        currentPage = 1;
+        renderCurrentPage();
+        updateLogsCount();
+
+        showSimpleMessage('Логи очищены', 'success');
+    } catch (error) {
+        console.error('Error clearing logs:', error);
+        showSimpleMessage('Ошибка очистки логов: ' + error.message, 'error');
+    }
+}
+
+// Очистка при уходе со страницы
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+</script>
+
+<style>
+.log-row:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+.log-message {
+    word-break: break-word;
+    max-width: 500px;
+}
+.log-content {
+    white-space: pre-wrap;
+}
+
+
+/* Mobile logs styling */
+.log-row-mobile {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.log-row-mobile:hover {
+    background-color: var(--bg-hover);
+}
+
+.log-mobile-content {
+    padding: 0.75rem !important;
+    position: relative;
+}
+
+.log-mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.log-mobile-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.log-mobile-module {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.log-mobile-message {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.log-mobile-expand {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

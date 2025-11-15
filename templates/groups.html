@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}Groups{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-object-group"></i> User Groups</h1>
+        <p class="text-muted">Управление группами пользователей</p>
+    </div>
+</div>
+
+<!-- Create Group Form -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-plus-circle"></i> Создать группу</h5>
+            </div>
+            <div class="card-body">
+                <form id="createGroupForm">
+                    <div class="mb-3">
+                        <label for="groupName" class="form-label">Название группы</label>
+                        <input type="text" class="form-control" id="groupName"
+                               placeholder="Введите название группы" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Создать группу
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> Информация</h5>
+            </div>
+            <div class="card-body">
+                <p>Группы позволяют организовать пользователей для:</p>
+                <ul>
+                    <li>Целевых рассылок</li>
+                    <li>Групповых уведомлений</li>
+                    <li>Разграничения прав доступа</li>
+                    <li>Сегментации пользовательской базы</li>
+                </ul>
+                <p class="text-muted mb-0">
+                    <small>Создавайте группы для разных категорий пользователей</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Groups List -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fas fa-list"></i> Список групп</h5>
+                <button class="btn btn-sm btn-outline-primary" id="refreshGroupsBtn" onclick="refreshGroups()">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="groupsList">
+                    <p><i class="fas fa-spinner fa-spin"></i> Загрузка групп...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Group Details Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" id="groupModalTitle">Управление группой</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body" id="groupModalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title">Добавить пользователя в группу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <input type="hidden" id="targetGroupName">
+                    <input type="hidden" id="selectedUserId">
+
+                    <div class="mb-3">
+                        <label for="userSearchInput" class="form-label">Поиск пользователя</label>
+                        <input type="text" class="form-control" id="userSearchInput"
+                               placeholder="Введите имя, username или ID"
+                               autocomplete="off">
+                        <div class="form-text">Начните вводить для поиска пользователя</div>
+                    </div>
+
+                    <div id="userSearchResults" class="mb-3" style="display: none;">
+                        <label class="form-label">Результаты поиска:</label>
+                        <div id="userSearchList" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+
+                    <div id="selectedUserInfo" class="alert alert-info" style="display: none;">
+                        <strong>Выбран:</strong> <span id="selectedUserDisplay"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="addUserSubmitBtn" disabled>
+                        <i class="fas fa-user-plus"></i> Добавить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let groupModal, addUserModal;
+let currentGroup = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
+    addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+
+    loadGroups();
+
+    document.getElementById('createGroupForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await createGroup();
+    });
+
+    document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await addUserToGroup();
+    });
+});
+
+async function createGroup() {
+    const name = document.getElementById('groupName').value.trim();
+
+    if (!name) {
+        alert('Введите название группы');
+        return;
+    }
+
+    try {
+        const data = await ApiClient.post('/api/groups', { name: name });
+
+        if (data.success) {
+            alert('Группа создана!');
+            document.getElementById('groupName').value = '';
+            loadGroups();
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось создать группу'));
+        }
+    } catch (error) {
+        console.error('Error creating group:', error);
+        alert('Ошибка создания группы');
+    }
+}
+
+async function refreshGroups() {
+    const btn = document.getElementById('refreshGroupsBtn');
+    const icon = btn.querySelector('i');
+
+    btn.disabled = true;
+    icon.classList.add('fa-spin');
+
+    try {
+        await loadGroups();
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            icon.classList.remove('fa-spin');
+        }, 300);
+    }
+}
+
+async function loadGroups() {
+    try {
+        const data = await ApiClient.get('/api/groups');
+
+        if (data.success) {
+            renderGroups(data.groups);
+        } else {
+            document.getElementById('groupsList').innerHTML =
+                '<div class="alert alert-danger">Ошибка загрузки групп</div>';
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        document.getElementById('groupsList').innerHTML =
+            '<div class="alert alert-danger">Ошибка соединения</div>';
+    }
+}
+
+function renderGroups(groups) {
+    if (groups.length === 0) {
+        document.getElementById('groupsList').innerHTML =
+            '<div class="alert alert-info">Группы не найдены. Создайте первую группу.</div>';
+        return;
+    }
+
+    const html = `
+        <div class="row">
+            ${groups.map(group => `
+                <div class="col-md-4 mb-3">
+                    <div class="card group-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-users"></i> ${group.name}
+                            </h5>
+                            <p class="card-text text-muted">
+                                <small>Группа пользователей</small>
+                            </p>
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-sm btn-outline-info" onclick="viewGroup('${group.name}')">
+                                    <i class="fas fa-eye"></i> Открыть
+                                </button>
+                                ${group.name !== 'default' ? `
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup('${group.name}')">
+                                    <i class="fas fa-trash"></i> Удалить
+                                </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    document.getElementById('groupsList').innerHTML = html;
+}
+
+async function viewGroup(groupName) {
+    currentGroup = groupName;
+
+    document.getElementById('groupModalTitle').textContent = `Группа: ${groupName}`;
+    document.getElementById('groupModalBody').innerHTML = `
+        <div class="mb-3">
+            <h6>Управление участниками</h6>
+            <button class="btn btn-sm btn-primary" onclick="showAddUserModal('${groupName}')">
+                <i class="fas fa-user-plus"></i> Добавить пользователя
+            </button>
+        </div>
+
+        <div id="groupMembersList">
+            <p><i class="fas fa-spinner fa-spin"></i> Загрузка участников...</p>
+        </div>
+
+        ${groupName !== 'default' ? `
+        <div class="mt-3">
+            <h6>Действия с группой</h6>
+            <button class="btn btn-sm btn-danger" onclick="deleteGroup('${groupName}')">
+                <i class="fas fa-trash"></i> Удалить группу
+            </button>
+        </div>
+        ` : `
+        <div class="mt-3">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Группу "default" нельзя удалить
+            </div>
+        </div>
+        `}
+    `;
+
+    groupModal.show();
+
+    // Загружаем участников
+    await loadGroupMembers(groupName);
+}
+
+async function loadGroupMembers(groupName) {
+    try {
+        const data = await ApiClient.get(`/api/groups/${groupName}/members`);
+
+        if (data.success) {
+            renderGroupMembers(data.members, groupName);
+        } else {
+            document.getElementById('groupMembersList').innerHTML =
+                '<div class="alert alert-danger">Ошибка загрузки участников</div>';
+        }
+    } catch (error) {
+        console.error('Error loading group members:', error);
+        document.getElementById('groupMembersList').innerHTML =
+            '<div class="alert alert-danger">Ошибка соединения</div>';
+    }
+}
+
+function renderGroupMembers(members, groupName) {
+    if (members.length === 0) {
+        document.getElementById('groupMembersList').innerHTML =
+            '<div class="alert alert-info">В группе пока нет участников</div>';
+        return;
+    }
+
+    const html = `
+        <h6>Участники (${members.length})</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Имя</th>
+                        <th>Username</th>
+                        <th>Роль</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${members.map(member => `
+                        <tr>
+                            <td>${member.telegram_id}</td>
+                            <td>${member.first_name} ${member.last_name || ''}</td>
+                            <td>@${member.username || 'N/A'}</td>
+                            <td><span class="badge bg-${getRoleBadge(member.role)}">${member.role}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeUserFromGroup('${groupName}', ${member.telegram_id})">
+                                    <i class="fas fa-user-minus"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    document.getElementById('groupMembersList').innerHTML = html;
+}
+
+function getRoleBadge(role) {
+    const badges = {
+        'super_admin': 'danger',
+        'admin': 'warning',
+        'user': 'secondary'
+    };
+    return badges[role] || 'secondary';
+}
+
+function showAddUserModal(groupName) {
+    document.getElementById('targetGroupName').value = groupName;
+    document.getElementById('selectedUserId').value = '';
+    document.getElementById('userSearchInput').value = '';
+    document.getElementById('userSearchResults').style.display = 'none';
+    document.getElementById('selectedUserInfo').style.display = 'none';
+    document.getElementById('addUserSubmitBtn').disabled = true;
+    addUserModal.show();
+}
+
+// Поиск пользователей с debounce
+let searchTimeout = null;
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                document.getElementById('userSearchResults').style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => searchUsers(query), 300);
+        });
+    }
+});
+
+async function searchUsers(query) {
+    try {
+        const data = await ApiClient.get(`/api/users?search=${encodeURIComponent(query)}`);
+
+        if (data.success && data.users.length > 0) {
+            renderUserSearchResults(data.users);
+        } else {
+            document.getElementById('userSearchList').innerHTML =
+                '<div class="list-group-item text-muted">Пользователи не найдены</div>';
+            document.getElementById('userSearchResults').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error searching users:', error);
+        document.getElementById('userSearchList').innerHTML =
+            '<div class="list-group-item text-danger">Ошибка поиска</div>';
+        document.getElementById('userSearchResults').style.display = 'block';
+    }
+}
+
+function renderUserSearchResults(users) {
+    const html = users.map(user => `
+        <div class="list-group-item list-group-item-action" style="cursor: pointer;"
+             onclick="selectUser(${user.id}, '${user.first_name}', '${user.last_name || ''}', '${user.username || ''}')">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${user.first_name} ${user.last_name || ''}</strong>
+                    ${user.username ? `<span class="text-muted">@${user.username}</span>` : ''}
+                    <br>
+                    <small class="text-muted">ID: ${user.id}</small>
+                </div>
+                <span class="badge bg-${getRoleBadge(user.role)}">${user.role}</span>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('userSearchList').innerHTML = html;
+    document.getElementById('userSearchResults').style.display = 'block';
+}
+
+function selectUser(userId, firstName, lastName, username) {
+    document.getElementById('selectedUserId').value = userId;
+
+    const displayName = `${firstName} ${lastName}`.trim() +
+        (username ? ` (@${username})` : '') +
+        ` [ID: ${userId}]`;
+
+    document.getElementById('selectedUserDisplay').textContent = displayName;
+    document.getElementById('selectedUserInfo').style.display = 'block';
+    document.getElementById('addUserSubmitBtn').disabled = false;
+
+    // Скрываем результаты поиска
+    document.getElementById('userSearchResults').style.display = 'none';
+}
+
+async function addUserToGroup() {
+    const groupName = document.getElementById('targetGroupName').value;
+    const userId = document.getElementById('selectedUserId').value;
+
+    if (!userId) {
+        alert('Выберите пользователя из списка');
+        return;
+    }
+
+    try {
+        const data = await ApiClient.post(`/api/groups/${groupName}/users`, {
+            user_id: parseInt(userId)
+        });
+
+        if (data.success) {
+            alert('Пользователь добавлен в группу!');
+            addUserModal.hide();
+            // Сбрасываем форму
+            document.getElementById('selectedUserId').value = '';
+            document.getElementById('userSearchInput').value = '';
+            document.getElementById('selectedUserInfo').style.display = 'none';
+            document.getElementById('userSearchResults').style.display = 'none';
+            // Обновляем список участников если модальное окно группы открыто
+            if (currentGroup === groupName) {
+                await loadGroupMembers(groupName);
+            }
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось добавить пользователя'));
+        }
+    } catch (error) {
+        console.error('Error adding user to group:', error);
+        alert('Ошибка добавления пользователя');
+    }
+}
+
+async function removeUserFromGroup(groupName, userId) {
+    if (!confirm(`Удалить пользователя ${userId} из группы "${groupName}"?`)) {
+        return;
+    }
+
+    try {
+        const data = await ApiClient.delete(`/api/groups/${groupName}/users/${userId}`);
+
+        if (data.success) {
+            alert('Пользователь удален из группы');
+            await loadGroupMembers(groupName);
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось удалить пользователя'));
+        }
+    } catch (error) {
+        console.error('Error removing user from group:', error);
+        alert('Ошибка удаления пользователя');
+    }
+}
+
+async function deleteGroup(groupName) {
+    if (!confirm(`Вы уверены, что хотите удалить группу "${groupName}"?`)) {
+        return;
+    }
+
+    try {
+        const data = await ApiClient.delete(`/api/groups/${groupName}`);
+
+        if (data.success) {
+            alert('Группа удалена');
+            groupModal.hide();
+            loadGroups();
+        } else {
+            alert('Ошибка: ' + (data.message || 'Не удалось удалить группу'));
+        }
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        alert('Ошибка удаления группы');
+    }
+}
+</script>
+
+<style>
+.group-card {
+    transition: all 0.15s;
+    height: 100%;
+}
+
+.group-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.group-card .card-title {
+    color: var(--primary-color);
+}
+</style>
+{% endblock %}

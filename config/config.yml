@@ -1,0 +1,54 @@
+api:
+  url: 'http://localhost:8081'
+  key: ""
+  host: '0.0.0.0'
+  port: 8080
+
+# Настройки аутентификации
+auth:
+  basic:
+    enable: true
+    admin_username: 'admin'
+    admin_password: 'admin'
+  cors:
+    enable: true
+    # Дополнительные настройки CORS при необходимости
+    allowed_origins: []
+      # - 'https://your-domain.com'
+    allowed_methods: []
+      # - 'GET'
+      # - 'POST'
+      # - 'PUT'
+      # - 'DELETE'
+    allowed_headers: []
+      # - 'Content-Type'
+      # - 'X-API-Key'
+
+logging:
+  # Настройки стандартного логирования
+  standard_log:
+    # Уровень логирования
+    level: 'INFO'
+    # Выводить ли аудит-логи в stdout
+    console: true  # Выводить ли обычные логи в stdout
+    # Файл для логов
+    file: 'logs/admin_panel.log'
+    # Формат логов
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # Максимальный размер файла лога
+    max_size: 10485760
+  # Настройки аудита запросов
+  audit_log:
+    # Включить аудит
+    enable: true
+    # Выводить ли логи в stdout
+    console: true
+    # Файл для аудит-логов
+    file: 'logs/audit.log'
+    # Формат аудит логов
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # Максимальный размер файла аудит-лога
+    max_size: 10485760
+  # Настройки логирования библиотеки aiohttp
+  aiohttp_access_log:
+    disable: true

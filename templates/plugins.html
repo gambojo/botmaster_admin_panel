@@ -1,0 +1,799 @@
+{% extends "base.html" %}
+
+{% block title %}Plugins - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h3 mb-0"><i class="fas fa-puzzle-piece"></i> Управление плагинами</h1>
+            <p class="text-muted mb-0">Включение, отключение и перезагрузка плагинов</p>
+        </div>
+        <button class="btn btn-primary" id="refreshBtn" onclick="refreshPlugins();">
+            <i class="fas fa-sync-alt"></i> Обновить
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Loaded Plugins Section -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-check-circle text-success"></i> Загруженные плагины</h5>
+                <span class="badge bg-primary" id="loadedCount">0</span>
+            </div>
+            <div class="card-body">
+                <div id="loadedPlugins">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Plugin Section -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cloud-upload-alt text-info"></i> Загрузить плагин</h5>
+            </div>
+            <div class="card-body">
+                <!-- Method selector -->
+                <div class="mb-4">
+                    <label class="form-label"><strong>Способ загрузки:</strong></label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="uploadMethod" id="methodFile" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="methodFile">
+                            <i class="fas fa-file-archive"></i> С устройства
+                        </label>
+
+                        <input type="radio" class="btn-check" name="uploadMethod" id="methodUrl" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="methodUrl">
+                            <i class="fas fa-link"></i> По URL
+                        </label>
+
+                        <input type="radio" class="btn-check" name="uploadMethod" id="methodGithub" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="methodGithub">
+                            <i class="fab fa-github"></i> GitHub
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Dynamic form content -->
+                <form id="uploadPluginForm">
+                    <!-- File upload section -->
+                    <div id="fileSection" class="upload-section">
+                        <div class="mb-3">
+                            <label for="pluginFile" class="form-label">Выберите архив плагина</label>
+                            <input type="file" class="form-control" id="pluginFile" name="file"
+                                   accept=".tar.gz,.tgz,.zip,.py" required>
+                            <div class="form-text">Поддерживаемые форматы: .tar.gz, .tgz, .zip, .py</div>
+                        </div>
+                    </div>
+
+                    <!-- URL upload section -->
+                    <div id="urlSection" class="upload-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="pluginUrl" class="form-label">URL архива плагина</label>
+                            <input type="url" class="form-control" id="pluginUrl" name="url"
+                                   placeholder="https://example.com/plugin.tar.gz" required>
+                            <div class="form-text">Прямая ссылка на архив плагина</div>
+                        </div>
+                    </div>
+
+                    <!-- GitHub upload section -->
+                    <div id="githubSection" class="upload-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="githubRepo" class="form-label">GitHub репозиторий</label>
+                            <input type="text" class="form-control" id="githubRepo" name="repo"
+                                   placeholder="username/repository" required>
+                            <div class="form-text">Формат: username/repository</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="githubBranch" class="form-label">Ветка (опционально)</label>
+                            <input type="text" class="form-control" id="githubBranch" name="branch"
+                                   placeholder="main" value="main">
+                        </div>
+                    </div>
+
+                    <!-- Submit button -->
+                    <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                        <i class="fas fa-upload"></i> Загрузить плагин
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Detail Modal -->
+<div class="modal fade" id="pluginModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pluginModalTitle"><i class="fas fa-puzzle-piece"></i> Информация о плагине</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="pluginModalBody">
+                <!-- Plugin details will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .plugin-card {
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: var(--bg-secondary);
+        transition: all 0.2s;
+    }
+
+    .plugin-card:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .plugin-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .plugin-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+
+    .plugin-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .plugin-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .plugin-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .plugin-status.enabled {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+
+    .plugin-status.disabled {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+    /* Dark theme for modal */
+    .modal-content {
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .modal-header {
+        background: var(--bg-secondary) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .modal-footer {
+        background: var(--bg-secondary) !important;
+        border-top: 1px solid var(--border-color) !important;
+    }
+
+    .modal-title {
+        color: var(--text-primary) !important;
+    }
+
+    .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
+
+    /* Table in modal */
+    .modal .table {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .modal .table td {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* Alert in modal */
+    .modal .alert {
+        background: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    .upload-section {
+    transition: all 0.3s ease-in-out;
+    }
+
+    .upload-section.hidden {
+        opacity: 0;
+        height: 0;
+        overflow: hidden;
+    }
+
+    .upload-section.visible {
+        opacity: 1;
+        height: auto;
+    }
+
+</style>
+
+<script>
+    let loadedPlugins = [];
+
+    // Load plugins on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPlugins();
+    });
+
+    async function refreshPlugins() {
+        const btn = document.getElementById('refreshBtn');
+        const icon = btn.querySelector('i');
+
+        // Добавляем эффект вращения
+        btn.disabled = true;
+        icon.classList.add('fa-spin');
+
+        try {
+            await loadPlugins();
+        } finally {
+            // Убираем эффект после завершения
+            setTimeout(() => {
+                btn.disabled = false;
+                icon.classList.remove('fa-spin');
+            }, 300);
+        }
+    }
+
+    async function loadPlugins() {
+        try {
+            const response = await fetch('/admin/api/plugins', {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load plugins');
+            }
+
+            const data = await response.json();
+            loadedPlugins = data.plugins || [];
+            
+            document.getElementById('loadedCount').textContent = loadedPlugins.length;
+            
+            const container = document.getElementById('loadedPlugins');
+            
+            if (loadedPlugins.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Нет загруженных плагинов</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = loadedPlugins.map(plugin => `
+                <div class="plugin-card">
+                    <div class="plugin-name">
+                        <i class="fas fa-puzzle-piece"></i> ${plugin.name}
+                    </div>
+                    <div class="plugin-description">${plugin.description || 'Нет описания'}</div>
+                    <div class="plugin-meta">
+                        <span><i class="fas fa-tag"></i> ${plugin.version || 'N/A'}</span>
+                        <span><i class="fas fa-user"></i> ${plugin.author || 'Unknown'}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="plugin-status ${plugin.enabled ? 'enabled' : 'disabled'}">
+                            ${plugin.enabled ? 'Включен' : 'Выключен'}
+                        </span>
+                        <div class="plugin-actions">
+                            ${plugin.enabled ? 
+                                `<button class="btn btn-warning btn-sm" onclick="disablePlugin('${plugin.name}')">
+                                    <i class="fas fa-pause"></i> Отключить
+                                </button>` :
+                                `<button class="btn btn-success btn-sm" onclick="enablePlugin('${plugin.name}')">
+                                    <i class="fas fa-play"></i> Включить
+                                </button>`
+                            }
+                            <button class="btn btn-info btn-sm" onclick="reloadPlugin('${plugin.name}')">
+                                <i class="fas fa-sync-alt"></i> Перезагрузить
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="viewPluginDetails('${plugin.name}', true)">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading plugins:', error);
+            document.getElementById('loadedPlugins').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Ошибка загрузки плагинов
+                </div>
+            `;
+        }
+    }
+
+    async function enablePlugin(pluginName) {
+        try {
+            const response = await fetch(`/admin/api/plugins/${pluginName}/enable`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Успех', `Плагин ${pluginName} включен`, 'success');
+                await loadPlugins();
+            } else {
+                showNotification('Ошибка', data.error || 'Не удалось включить плагин', 'error');
+            }
+        } catch (error) {
+            console.error('Error enabling plugin:', error);
+            showNotification('Ошибка', 'Ошибка при включении плагина', 'error');
+        }
+    }
+
+    async function disablePlugin(pluginName) {
+        if (!confirm(`Вы уверены, что хотите отключить плагин ${pluginName}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/api/plugins/${pluginName}/disable`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Успех', `Плагин ${pluginName} отключен`, 'success');
+                await loadPlugins();
+            } else {
+                showNotification('Ошибка', data.error || 'Не удалось отключить плагин', 'error');
+            }
+        } catch (error) {
+            console.error('Error disabling plugin:', error);
+            showNotification('Ошибка', 'Ошибка при отключении плагина', 'error');
+        }
+    }
+
+    async function reloadPlugin(pluginName) {
+        try {
+            const response = await fetch(`/admin/api/plugins/${pluginName}/reload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Успех', `Плагин ${pluginName} перезагружен`, 'success');
+                await loadPlugins();
+            } else {
+                showNotification('Ошибка', data.error || 'Не удалось перезагрузить плагин', 'error');
+            }
+        } catch (error) {
+            console.error('Error reloading plugin:', error);
+            showNotification('Ошибка', 'Ошибка при перезагрузке плагина', 'error');
+        }
+    }
+
+    function viewPluginDetails(pluginName, isLoaded) {
+        const plugin = isLoaded ? loadedPlugins.find(p => p.name === pluginName) : null;
+        
+        const modalBody = document.getElementById('pluginModalBody');
+        
+        if (plugin) {
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Основная информация</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Название:</strong></td>
+                                <td>${plugin.name}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Версия:</strong></td>
+                                <td>${plugin.version || 'N/A'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Автор:</strong></td>
+                                <td>${plugin.author || 'Unknown'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Статус:</strong></td>
+                                <td><span class="plugin-status ${plugin.enabled ? 'enabled' : 'disabled'}">${plugin.enabled ? 'Включен' : 'Выключен'}</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Описание</h6>
+                        <p>${plugin.description || 'Нет описания'}</p>
+                        
+                        <h6>Действия</h6>
+                        <div class="d-grid gap-2">
+                            ${plugin.enabled ? 
+                                `<button class="btn btn-warning" onclick="disablePlugin('${plugin.name}'); bootstrap.Modal.getInstance(document.getElementById('pluginModal')).hide();">
+                                    <i class="fas fa-pause"></i> Отключить
+                                </button>` :
+                                `<button class="btn btn-success" onclick="enablePlugin('${plugin.name}'); bootstrap.Modal.getInstance(document.getElementById('pluginModal')).hide();">
+                                    <i class="fas fa-play"></i> Включить
+                                </button>`
+                            }
+                            <button class="btn btn-info" onclick="reloadPlugin('${plugin.name}'); bootstrap.Modal.getInstance(document.getElementById('pluginModal')).hide();">
+                                <i class="fas fa-sync-alt"></i> Перезагрузить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalBody.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-box"></i> ${pluginName}</h6>
+                    <p>Этот плагин доступен для загрузки. Информация о плагине будет доступна после загрузки.</p>
+                    <button class="btn btn-success" onclick="enablePlugin('${pluginName}'); bootstrap.Modal.getInstance(document.getElementById('pluginModal')).hide();">
+                        <i class="fas fa-download"></i> Загрузить плагин
+                    </button>
+                </div>
+            `;
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('pluginModal'));
+        modal.show();
+    }
+
+    function showNotification(title, message, type) {
+        // Simple notification using Bootstrap alert
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+
+        const notification = document.createElement('div');
+        notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+        notification.style.zIndex = '9999';
+        notification.innerHTML = `
+            <i class="fas fa-${icon}"></i> <strong>${title}:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+
+
+
+    // Upload plugin from file
+<!--    document.getElementById('uploadFileForm').addEventListener('submit', async function(e) {-->
+<!--        e.preventDefault();-->
+
+<!--        const fileInput = document.getElementById('pluginFile');-->
+<!--        const file = fileInput.files[0];-->
+
+<!--        if (!file) {-->
+<!--            showNotification('Ошибка', 'Выберите файл для загрузки', 'error');-->
+<!--            return;-->
+<!--        }-->
+
+<!--        const formData = new FormData();-->
+<!--        formData.append('file', file);-->
+
+<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
+<!--        const originalText = submitBtn.innerHTML;-->
+<!--        submitBtn.disabled = true;-->
+<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
+
+<!--        try {-->
+<!--            const response = await fetch('/admin/api/plugins/upload', {-->
+<!--                method: 'POST',-->
+<!--                headers: {-->
+<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')-->
+<!--                },-->
+<!--                body: formData-->
+<!--            });-->
+
+<!--            const data = await response.json();-->
+
+<!--            if (data.success) {-->
+<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен`, 'success');-->
+<!--                fileInput.value = '';-->
+<!--                await loadPlugins();-->
+<!--            } else {-->
+<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
+<!--            }-->
+<!--        } catch (error) {-->
+<!--            console.error('Error uploading plugin:', error);-->
+<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
+<!--        } finally {-->
+<!--            submitBtn.disabled = false;-->
+<!--            submitBtn.innerHTML = originalText;-->
+<!--        }-->
+<!--    });-->
+
+    // Upload plugin from URL
+<!--    document.getElementById('uploadUrlForm').addEventListener('submit', async function(e) {-->
+<!--        e.preventDefault();-->
+
+<!--        const url = document.getElementById('pluginUrl').value;-->
+
+<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
+<!--        const originalText = submitBtn.innerHTML;-->
+<!--        submitBtn.disabled = true;-->
+<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
+
+<!--        try {-->
+<!--            const response = await fetch('/admin/api/plugins/upload-url', {-->
+<!--                method: 'POST',-->
+<!--                headers: {-->
+<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token'),-->
+<!--                    'Content-Type': 'application/json'-->
+<!--                },-->
+<!--                body: JSON.stringify({ url })-->
+<!--            });-->
+
+<!--            const data = await response.json();-->
+
+<!--            if (data.success) {-->
+<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен`, 'success');-->
+<!--                document.getElementById('pluginUrl').value = '';-->
+<!--                await loadPlugins();-->
+<!--            } else {-->
+<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
+<!--            }-->
+<!--        } catch (error) {-->
+<!--            console.error('Error uploading plugin from URL:', error);-->
+<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
+<!--        } finally {-->
+<!--            submitBtn.disabled = false;-->
+<!--            submitBtn.innerHTML = originalText;-->
+<!--        }-->
+<!--    });-->
+
+    // Upload plugin from GitHub
+<!--    document.getElementById('uploadGithubForm').addEventListener('submit', async function(e) {-->
+<!--        e.preventDefault();-->
+
+<!--        const repo = document.getElementById('githubRepo').value;-->
+<!--        const branch = document.getElementById('githubBranch').value || 'main';-->
+
+<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
+<!--        const originalText = submitBtn.innerHTML;-->
+<!--        submitBtn.disabled = true;-->
+<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
+
+<!--        try {-->
+<!--            const response = await fetch('/admin/api/plugins/upload-github', {-->
+<!--                method: 'POST',-->
+<!--                headers: {-->
+<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token'),-->
+<!--                    'Content-Type': 'application/json'-->
+<!--                },-->
+<!--                body: JSON.stringify({ repo, branch })-->
+<!--            });-->
+
+<!--            const data = await response.json();-->
+
+<!--            if (data.success) {-->
+<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен с GitHub`, 'success');-->
+<!--                document.getElementById('githubRepo').value = '';-->
+<!--                await loadPlugins();-->
+<!--            } else {-->
+<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
+<!--            }-->
+<!--        } catch (error) {-->
+<!--            console.error('Error uploading plugin from GitHub:', error);-->
+<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
+<!--        } finally {-->
+<!--            submitBtn.disabled = false;-->
+<!--            submitBtn.innerHTML = originalText;-->
+<!--        }-->
+<!--    });-->
+
+
+    // Method switcher
+    document.querySelectorAll('input[name="uploadMethod"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Hide all sections
+            document.querySelectorAll('.upload-section').forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Show selected section
+            const method = this.id.replace('method', '').toLowerCase();
+            document.getElementById(`${method}Section`).style.display = 'block';
+
+            // Update submit button text
+            const submitBtn = document.getElementById('submitBtn');
+            const icons = {
+                'file': 'fa-upload',
+                'url': 'fa-download',
+                'github': 'fab fa-github'
+            };
+            const texts = {
+                'file': 'Загрузить с устройства',
+                'url': 'Загрузить по URL',
+                'github': 'Загрузить с GitHub'
+            };
+
+            submitBtn.innerHTML = `<i class="${icons[method]}"></i> ${texts[method]}`;
+        });
+    });
+
+    // Unified form submission
+    document.getElementById('uploadPluginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+
+        try {
+            const activeMethod = document.querySelector('input[name="uploadMethod"]:checked').id.replace('method', '').toLowerCase();
+            let result;
+
+            switch (activeMethod) {
+                case 'file':
+                    result = await uploadFromFile();
+                    break;
+                case 'url':
+                    result = await uploadFromUrl();
+                    break;
+                case 'github':
+                    result = await uploadFromGithub();
+                    break;
+            }
+
+            if (result.success) {
+                showNotification('Успех', `Плагин ${result.plugin_name} успешно загружен`, 'success');
+                clearForm();
+                await loadPlugins();
+            } else {
+                showNotification('Ошибка', result.error || 'Не удалось загрузить плагин', 'error');
+            }
+
+        } catch (error) {
+            console.error('Error uploading plugin:', error);
+            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+
+    // Upload functions
+    async function uploadFromFile() {
+        const fileInput = document.getElementById('pluginFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            throw new Error('Выберите файл для загрузки');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/admin/api/plugins/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('session_token')
+            },
+            body: formData
+        });
+
+        return await response.json();
+    }
+
+    async function uploadFromUrl() {
+        const url = document.getElementById('pluginUrl').value;
+
+        if (!url) {
+            throw new Error('Введите URL для загрузки');
+        }
+
+        const response = await fetch('/admin/api/plugins/upload-url', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('session_token'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+        });
+
+        return await response.json();
+    }
+
+    async function uploadFromGithub() {
+        const repo = document.getElementById('githubRepo').value;
+        const branch = document.getElementById('githubBranch').value || 'main';
+
+        if (!repo) {
+            throw new Error('Введите репозиторий GitHub');
+        }
+
+        const response = await fetch('/admin/api/plugins/upload-github', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('session_token'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ repo, branch })
+        });
+
+        return await response.json();
+    }
+
+    function clearForm() {
+        document.getElementById('pluginFile').value = '';
+        document.getElementById('pluginUrl').value = '';
+        document.getElementById('githubRepo').value = '';
+        document.getElementById('githubBranch').value = 'main';
+    }
+
+
+</script>
+{% endblock %}
