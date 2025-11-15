@@ -1,54 +1,69 @@
+# Конфигурация админ-панели BotMaster
 api:
+  # URL Bot API (должен совпадать с портом BotAPI в боте)
   url: 'http://localhost:8081'
+  # API ключ для аутентификации (получите из логов бота при первом запуске)
   key: ""
+  # Хост для прослушивания (0.0.0.0 для доступа извне)
   host: '0.0.0.0'
+  # Порт для админ-панели (по умолчанию 8080)
   port: 8080
 
 # Настройки аутентификации
 auth:
+  # Настройки базовой аутентификации
   basic:
+    # Включение базовой аутентификации
     enable: true
+    # Имя пользователя для входа в админ-панель
     admin_username: 'admin'
+    # Пароль для входа в админ-панель
     admin_password: 'admin'
+  # Настройки CORS разрешений
   cors:
+    # Включение CORS (Cross-Origin Resource Sharing)
     enable: true
-    # Дополнительные настройки CORS при необходимости
+    # Разрешенные домены для CORS (пусто = все)
     allowed_origins: []
       # - 'https://your-domain.com'
+    # Разрешенные HTTP методы (пусто = все)
     allowed_methods: []
       # - 'GET'
       # - 'POST'
       # - 'PUT'
       # - 'DELETE'
+    # Разрешенные заголовки (пусто = все)
     allowed_headers: []
       # - 'Content-Type'
       # - 'X-API-Key'
 
+# Настройки логирования
 logging:
-  # Настройки стандартного логирования
+  # Настройки основного лога приложения
   standard_log:
-    # Уровень логирования
+    # Уровень логирования (DEBUG, INFO, WARNING, ERROR)
     level: 'INFO'
-    # Выводить ли аудит-логи в stdout
-    console: true  # Выводить ли обычные логи в stdout
-    # Файл для логов
-    file: 'logs/admin_panel.log'
-    # Формат логов
-    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    # Максимальный размер файла лога
-    max_size: 10485760
-  # Настройки аудита запросов
-  audit_log:
-    # Включить аудит
-    enable: true
-    # Выводить ли логи в stdout
+    # Вывод логов в консоль
     console: true
-    # Файл для аудит-логов
-    file: 'logs/audit.log'
-    # Формат аудит логов
+    # Файл для сохранения логов
+    file: 'logs/admin_panel.log'
+    # Формат записей
     format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    # Максимальный размер файла аудит-лога
+    # Максимальный размер файла лога (10 МБ)
     max_size: 10485760
-  # Настройки логирования библиотеки aiohttp
+  # Настройки лога аудита (безопасность)
+  audit_log:
+    # Включение аудит-логирования
+    enable: true
+    # Вывод аудит-логов в консоль
+    console: true
+    # Файл для сохранения аудит-логов
+    file: 'logs/audit.log'
+    # Формат записей
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # Максимальный размер файла аудит-лога (10 МБ)
+    max_size: 10485760
+  # Настройки логов доступа aiohttp
   aiohttp_access_log:
+    # Отключение логов доступа aiohttp (для уменьшения шума)
     disable: true
