@@ -19,7 +19,7 @@ import logging
 from src.config_manager import get_config
 from src.logging_config import setup_logging
 from src.handlers import (plugins, base)
-from src.handlers import auth, users, info, logs, groups, broadcast
+from src.handlers import auth, users, info, logs, groups, broadcast, modules, referrals
 from src.audit_logger import AuditLogger  # Добавьте этот импорт
 
 
@@ -347,6 +347,8 @@ class AdminPanelApp:
         self.plugins_handlers = plugins.PluginsHandlers(self)
         self.logs_handlers = logs.LogsHandlers(self)
         self.info_handlers = info.InfoHandlers(self)
+        self.modules_handlers = modules.ModulesHandlers(self)
+        self.referrals_handlers = referrals.ReferralsHandlers(self)
 
     async def check_auth(self, request):
         """Public method to check authentication."""
@@ -416,6 +418,8 @@ class AdminPanelApp:
         self.app.router.add_get('/admin/groups', self.groups_handlers._handle_groups)
         self.app.router.add_get('/admin/plugins', self.plugins_handlers._handle_plugins)
         self.app.router.add_get('/admin/info', self.info_handlers._handle_info)
+        self.app.router.add_get('/admin/modules', self.modules_handlers._handle_modules)
+        self.app.router.add_get('/admin/referrals', self.referrals_handlers._handle_referrals)
 
         # User management API - управление пользователями
         self.app.router.add_get('/api/statistics', self.info_handlers._api_get_statistics)
@@ -458,6 +462,18 @@ class AdminPanelApp:
 
         # Bot information API - информация о боте
         self.app.router.add_get('/api/bot/info', self.info_handlers._api_get_bot_info)
+
+        # Modules management API - управление модулями бота
+        self.app.router.add_get('/api/modules', self.modules_handlers._api_get_modules)
+        self.app.router.add_get('/api/modules/{module_name}', self.modules_handlers._api_get_module)
+        self.app.router.add_post('/api/modules/{module_name}/enable', self.modules_handlers._api_enable_module)
+        self.app.router.add_post('/api/modules/{module_name}/disable', self.modules_handlers._api_disable_module)
+
+        # Referrals management API - управление реферальной системой
+        self.app.router.add_get('/api/referrals/{user_id}', self.referrals_handlers._api_get_user_referrals)
+        self.app.router.add_get('/api/referrals/{user_id}/history', self.referrals_handlers._api_get_referral_history)
+        self.app.router.add_post('/api/referrals/{user_id}/points/credit', self.referrals_handlers._api_credit_points)
+        self.app.router.add_post('/api/referrals/{user_id}/points/debit', self.referrals_handlers._api_debit_points)
 
         # Authentication API - аутентификация и авторизация
         self.app.router.add_post('/admin/api/login', self.auth_handlers._api_login)

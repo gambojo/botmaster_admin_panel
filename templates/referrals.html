@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}Referral System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- User Search -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-search"></i> Search User</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="userSearchInput" class="form-label" style="color: var(--text-primary);">Search by name, username or ID</label>
+                    <input type="text" class="form-control" id="userSearchInput"
+                           placeholder="Start typing to search...">
+                    <input type="hidden" id="selectedUserId">
+
+                    <!-- Search Results Dropdown -->
+                    <div id="userSearchResults" class="mt-2" style="display: none;">
+                        <div id="userSearchList" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Dynamic search results -->
+                        </div>
+                    </div>
+
+                    <!-- Selected User Display -->
+                    <div id="selectedUserInfo" class="alert alert-info mt-3" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-user"></i>
+                                <strong>Selected:</strong>
+                                <span id="selectedUserDisplay"></span>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="loadSelectedUser()">
+                                <i class="fas fa-arrow-right"></i> Load Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle"></i> You can also search by Telegram ID directly
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info -->
+    <div class="col-md-6 mb-4" id="userInfoSection" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-user"></i> User Information</h5>
+            </div>
+            <div class="card-body" id="userInfoContent">
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Stats -->
+    <div class="col-md-6 mb-4" id="referralStatsSection" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-chart-line"></i> Referral Statistics</h5>
+            </div>
+            <div class="card-body" id="referralStatsContent">
+            </div>
+        </div>
+    </div>
+
+    <!-- Points Management -->
+    <div class="col-12 mb-4" id="pointsManagementSection" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-coins"></i> Points Management</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-success">
+                            <div class="card-header" style="background: var(--success-bg); color: var(--text-success); border-bottom: 1px solid var(--border-color);">
+                                <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Credit Points</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: var(--text-primary);">Amount</label>
+                                    <input type="number" class="form-control" id="creditAmount" min="1" placeholder="Enter amount">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: var(--text-primary);">Reason (optional)</label>
+                                    <input type="text" class="form-control" id="creditReason" placeholder="e.g., Monthly bonus">
+                                </div>
+                                <button class="btn btn-success w-100" onclick="creditPoints()">
+                                    <i class="fas fa-plus-circle"></i> Credit Points
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-header" style="background: var(--danger-bg); color: var(--text-danger); border-bottom: 1px solid var(--border-color);">
+                                <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Debit Points</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: var(--text-primary);">Amount</label>
+                                    <input type="number" class="form-control" id="debitAmount" min="1" placeholder="Enter amount">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: var(--text-primary);">Reason (optional)</label>
+                                    <input type="text" class="form-control" id="debitReason" placeholder="e.g., Purchase item">
+                                </div>
+                                <button class="btn btn-danger w-100" onclick="debitPoints()">
+                                    <i class="fas fa-minus-circle"></i> Debit Points
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referrals List -->
+    <div class="col-md-6 mb-4" id="referralsListSection" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-users"></i> Referrals</h5>
+            </div>
+            <div class="card-body" id="referralsListContent">
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="col-md-6 mb-4" id="transactionHistorySection" style="display:none;">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0" style="color: var(--text-primary);"><i class="fas fa-history"></i> Transaction History</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadTransactionHistory()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body" id="transactionHistoryContent">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUserId = null;
+let searchTimeout = null;
+
+// Setup search on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setupUserSearch();
+});
+
+function setupUserSearch() {
+    const searchInput = document.getElementById('userSearchInput');
+
+    searchInput.addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+            document.getElementById('userSearchResults').style.display = 'none';
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            await searchUsers(query);
+        }, 300);
+    });
+
+    // Allow Enter key to search by ID directly
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = e.target.value.trim();
+
+            // If it's a number, treat it as direct ID search
+            if (/^\d+$/.test(query)) {
+                selectUser(parseInt(query), '', '', '');
+                loadSelectedUser();
+            }
+        }
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        const searchResults = document.getElementById('userSearchResults');
+        const searchContainer = searchInput.parentElement;
+
+        if (!searchContainer.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+}
+
+async function searchUsers(query) {
+    try {
+        const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
+        const result = await response.json();
+
+        if (result.success) {
+            renderUserSearchResults(result.users);
+        }
+    } catch (error) {
+        console.error('Error searching users:', error);
+    }
+}
+
+function renderUserSearchResults(users) {
+    const container = document.getElementById('userSearchList');
+    const resultsDiv = document.getElementById('userSearchResults');
+
+    if (!users || users.length === 0) {
+        container.innerHTML = '<div class="list-group-item" style="background: var(--bg-card); border-color: var(--border-color);"><small class="text-muted">No users found</small></div>';
+        resultsDiv.style.display = 'block';
+        return;
+    }
+
+    container.innerHTML = users.map(user => `
+        <a href="#" class="list-group-item list-group-item-action"
+           style="background: var(--bg-card); border-color: var(--border-color); color: var(--text-primary);"
+           onclick="selectUser(${user.telegram_id}, '${(user.first_name || '').replace(/'/g, "\\'")}', '${(user.last_name || '').replace(/'/g, "\\'")}', '${(user.username || '').replace(/'/g, "\\'")}'); return false;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong style="color: var(--text-primary);">${user.first_name || ''} ${user.last_name || ''}</strong>
+                    ${user.username ? `<span class="text-muted"> @${user.username}</span>` : ''}
+                    <br>
+                    <small class="text-muted">ID: ${user.telegram_id}</small>
+                </div>
+            </div>
+        </a>
+    `).join('');
+
+    resultsDiv.style.display = 'block';
+}
+
+function selectUser(userId, firstName, lastName, username) {
+    document.getElementById('selectedUserId').value = userId;
+
+    let displayName = `${firstName} ${lastName}`.trim();
+    if (!displayName) displayName = username ? `@${username}` : `User ${userId}`;
+    else if (username) displayName += ` @${username}`;
+
+    document.getElementById('selectedUserDisplay').textContent = `${displayName} [ID: ${userId}]`;
+    document.getElementById('selectedUserInfo').style.display = 'block';
+    document.getElementById('userSearchResults').style.display = 'none';
+    document.getElementById('userSearchInput').value = '';
+}
+
+function loadSelectedUser() {
+    const userId = document.getElementById('selectedUserId').value;
+    if (!userId) {
+        showAlert('warning', 'Please select a user first');
+        return;
+    }
+
+    currentUserId = userId;
+    searchUser();
+}
+
+async function searchUser() {
+    const userId = currentUserId;
+
+    if (!userId) {
+        showAlert('warning', 'Please select a user');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/referrals/${userId}`);
+        const result = await response.json();
+
+        if (result.success) {
+            displayUserInfo(result.data);
+            loadTransactionHistory();
+        } else {
+            showAlert('danger', result.error || 'User not found');
+            hideAllSections();
+        }
+    } catch (error) {
+        showAlert('danger', 'Error loading user data: ' + error.message);
+        hideAllSections();
+    }
+}
+
+function displayUserInfo(data) {
+    // Hide search selection info after successful load
+    document.getElementById('selectedUserInfo').style.display = 'none';
+
+    // Show all sections
+    document.getElementById('userInfoSection').style.display = 'block';
+    document.getElementById('referralStatsSection').style.display = 'block';
+    document.getElementById('pointsManagementSection').style.display = 'block';
+    document.getElementById('referralsListSection').style.display = 'block';
+    document.getElementById('transactionHistorySection').style.display = 'block';
+
+    // User Info
+    const userInfoHtml = `
+        <p style="color: var(--text-primary);"><strong>User ID:</strong> ${data.user_id}</p>
+        <p style="color: var(--text-primary);"><strong>Points Balance:</strong> <span class="badge bg-primary fs-5">${data.points}</span></p>
+        <p style="color: var(--text-primary);"><strong>Referral Code:</strong> <code>${data.referral_code}</code></p>
+        <p style="color: var(--text-primary);"><strong>Referral Link:</strong><br>
+            <small><a href="${data.referral_link}" target="_blank" style="color: var(--primary-color);">${data.referral_link}</a></small>
+        </p>
+        ${data.referred_by ? `
+            <hr style="border-color: var(--border-color);">
+            <p class="mb-0" style="color: var(--text-primary);"><strong>Invited by:</strong><br>
+                <small style="color: var(--text-secondary);">
+                    ID: ${data.referred_by.telegram_id}<br>
+                    ${data.referred_by.username ? '@' + data.referred_by.username : ''}
+                    ${data.referred_by.first_name ? data.referred_by.first_name : ''}
+                </small>
+            </p>
+        ` : ''}
+    `;
+    document.getElementById('userInfoContent').innerHTML = userInfoHtml;
+
+    // Referral Stats
+    const statsHtml = `
+        <div class="text-center">
+            <h2 class="display-4" style="color: var(--primary-color);">${data.total_referrals}</h2>
+            <p class="text-muted">Total Referrals</p>
+        </div>
+    `;
+    document.getElementById('referralStatsContent').innerHTML = statsHtml;
+
+    // Referrals List
+    if (data.referrals && data.referrals.length > 0) {
+        let referralsHtml = '<div class="list-group">';
+        data.referrals.forEach(ref => {
+            const displayName = ref.first_name || ref.username || 'User';
+            const username = ref.username ? `@${ref.username}` : '';
+            referralsHtml += `
+                <div class="list-group-item" style="background: var(--bg-card); border-color: var(--border-color);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0" style="color: var(--text-primary);">${displayName} ${username}</h6>
+                            <small class="text-muted">ID: ${ref.telegram_id}</small>
+                        </div>
+                        <small class="text-muted">${new Date(ref.invited_at).toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+        });
+        referralsHtml += '</div>';
+        document.getElementById('referralsListContent').innerHTML = referralsHtml;
+    } else {
+        document.getElementById('referralsListContent').innerHTML =
+            '<p class="text-muted">No referrals yet</p>';
+    }
+}
+
+async function loadTransactionHistory() {
+    if (!currentUserId) return;
+
+    const contentEl = document.getElementById('transactionHistoryContent');
+    contentEl.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div></div>';
+
+    try {
+        const response = await fetch(`/api/referrals/${currentUserId}/history?limit=50`);
+        const result = await response.json();
+
+        if (result.success) {
+            displayTransactionHistory(result.data);
+        } else {
+            contentEl.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+        }
+    } catch (error) {
+        contentEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+}
+
+function displayTransactionHistory(data) {
+    const contentEl = document.getElementById('transactionHistoryContent');
+
+    if (!data.transactions || data.transactions.length === 0) {
+        contentEl.innerHTML = '<p class="text-muted">No transactions yet</p>';
+        return;
+    }
+
+    let html = '<div class="list-group" style="max-height: 400px; overflow-y: auto;">';
+
+    data.transactions.forEach(tx => {
+        const isCredit = tx.transaction_type === 'credit';
+        const iconClass = isCredit ? 'fa-plus-circle text-success' : 'fa-minus-circle text-danger';
+        const amountClass = isCredit ? 'text-success' : 'text-danger';
+        const sign = isCredit ? '+' : '-';
+
+        html += `
+            <div class="list-group-item" style="background: var(--bg-card); border-color: var(--border-color);">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1" style="color: var(--text-primary);">
+                            <i class="fas ${iconClass}"></i> ${tx.description}
+                        </h6>
+                        ${tx.reason ? `<small class="text-muted">${tx.reason}</small>` : ''}
+                        <br>
+                        <small class="text-muted">${new Date(tx.created_at).toLocaleString()}</small>
+                    </div>
+                    <span class="badge ${amountClass} fs-6">${sign}${tx.amount}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    contentEl.innerHTML = html;
+}
+
+async function creditPoints() {
+    if (!currentUserId) {
+        showAlert('warning', 'Please select a user first');
+        return;
+    }
+
+    const amount = parseInt(document.getElementById('creditAmount').value);
+    const reason = document.getElementById('creditReason').value.trim();
+
+    if (!amount || amount <= 0) {
+        showAlert('warning', 'Please enter a valid amount');
+        return;
+    }
+
+    const data = { amount };
+    if (reason) data.reason = reason;
+
+    try {
+        const response = await fetch(`/api/referrals/${currentUserId}/points/credit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('success', result.message || 'Points credited successfully');
+            document.getElementById('creditAmount').value = '';
+            document.getElementById('creditReason').value = '';
+            await searchUser(); // Reload data
+        } else {
+            showAlert('danger', result.error || 'Failed to credit points');
+        }
+    } catch (error) {
+        showAlert('danger', 'Error: ' + error.message);
+    }
+}
+
+async function debitPoints() {
+    if (!currentUserId) {
+        showAlert('warning', 'Please select a user first');
+        return;
+    }
+
+    const amount = parseInt(document.getElementById('debitAmount').value);
+    const reason = document.getElementById('debitReason').value.trim();
+
+    if (!amount || amount <= 0) {
+        showAlert('warning', 'Please enter a valid amount');
+        return;
+    }
+
+    const data = { amount };
+    if (reason) data.reason = reason;
+
+    try {
+        const response = await fetch(`/api/referrals/${currentUserId}/points/debit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('success', result.message || 'Points debited successfully');
+            document.getElementById('debitAmount').value = '';
+            document.getElementById('debitReason').value = '';
+            await searchUser(); // Reload data
+        } else {
+            showAlert('danger', result.error || 'Failed to debit points');
+        }
+    } catch (error) {
+        showAlert('danger', 'Error: ' + error.message);
+    }
+}
+
+function hideAllSections() {
+    document.getElementById('userInfoSection').style.display = 'none';
+    document.getElementById('referralStatsSection').style.display = 'none';
+    document.getElementById('pointsManagementSection').style.display = 'none';
+    document.getElementById('referralsListSection').style.display = 'none';
+    document.getElementById('transactionHistorySection').style.display = 'none';
+
+    // Clear selection
+    document.getElementById('selectedUserId').value = '';
+    document.getElementById('selectedUserInfo').style.display = 'none';
+    currentUserId = null;
+}
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+             style="z-index: 9999; min-width: 300px;" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" style="filter: invert(1);"></button>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('afterbegin', alertHtml);
+
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

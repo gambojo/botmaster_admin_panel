@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Modules Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-puzzle-piece"></i> Module Management</h5>
+                <button class="btn btn-primary btn-sm" onclick="loadModules()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Loading indicator -->
+                <div id="loadingModules" class="text-center py-5" style="display:none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading modules...</p>
+                </div>
+
+                <!-- Modules list -->
+                <div id="modulesList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Module Details Modal -->
+<div class="modal fade" id="moduleDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title" style="color: var(--text-primary);">
+                    <i class="fas fa-info-circle"></i> Module Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body" id="moduleDetailsContent" style="color: var(--text-primary);">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load modules on page load
+document.addEventListener('DOMContentLoaded', loadModules);
+
+async function loadModules() {
+    const loadingEl = document.getElementById('loadingModules');
+    const listEl = document.getElementById('modulesList');
+
+    loadingEl.style.display = 'block';
+    listEl.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/modules');
+        const result = await response.json();
+
+        loadingEl.style.display = 'none';
+
+        if (result.success) {
+            displayModules(result.data);
+        } else {
+            showAlert('danger', result.error || 'Failed to load modules');
+        }
+    } catch (error) {
+        loadingEl.style.display = 'none';
+        showAlert('danger', 'Error loading modules: ' + error.message);
+    }
+}
+
+function displayModules(data) {
+    const listEl = document.getElementById('modulesList');
+    const modules = data.modules || [];
+
+    if (modules.length === 0) {
+        listEl.innerHTML = '<div class="alert alert-info">No modules available</div>';
+        return;
+    }
+
+    let html = `
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i> Total modules: <strong>${data.total_modules || modules.length}</strong>
+        </div>
+        <div class="alert alert-warning mb-4">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Note:</strong> Changes via API affect only runtime and reset on bot restart.
+            To make permanent changes, update config files or environment variables.
+        </div>
+        <div class="row">
+    `;
+
+    // Module icons mapping
+    const moduleIcons = {
+        'yookassa': 'fa-credit-card',
+        'robokassa': 'fa-wallet',
+        'referral': 'fa-users',
+        'bot_api': 'fa-server'
+    };
+
+    // Module display names
+    const moduleNames = {
+        'yookassa': 'ЮKassa Payment',
+        'robokassa': 'Robokassa Payment',
+        'referral': 'Referral System',
+        'bot_api': 'REST API Server'
+    };
+
+    modules.forEach(module => {
+        const icon = moduleIcons[module.name] || 'fa-puzzle-piece';
+        const displayName = moduleNames[module.name] || module.name;
+        const statusClass = module.enabled ? 'success' : 'secondary';
+        const statusIcon = module.enabled ? 'check-circle' : 'times-circle';
+        const isCritical = module.name === 'bot_api';
+
+        html += `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 ${module.enabled ? 'border-success' : ''}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0" style="color: var(--text-primary);">
+                                <i class="fas ${icon}"></i> ${displayName}
+                            </h5>
+                            <span class="badge bg-${statusClass}">
+                                <i class="fas fa-${statusIcon}"></i> ${module.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+
+                        <p class="text-muted small mb-3">
+                            <strong>Module:</strong> ${module.name}
+                        </p>
+
+                        ${isCritical ? '<div class="alert alert-warning py-1 px-2 small mb-3"><i class="fas fa-exclamation-triangle"></i> Critical module</div>' : ''}
+
+                        <div class="btn-group w-100" role="group">
+                            ${!module.enabled ? `
+                                <button class="btn btn-success btn-sm" onclick="enableModule('${module.name}')">
+                                    <i class="fas fa-power-off"></i> Enable
+                                </button>
+                            ` : `
+                                <button class="btn btn-danger btn-sm" onclick="disableModule('${module.name}')" ${isCritical ? 'disabled title="Cannot disable critical module"' : ''}>
+                                    <i class="fas fa-power-off"></i> Disable
+                                </button>
+                            `}
+                            <button class="btn btn-info btn-sm" onclick="showModuleDetails('${module.name}')">
+                                <i class="fas fa-info-circle"></i> Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    listEl.innerHTML = html;
+}
+
+async function enableModule(moduleName) {
+    if (!confirm(`Enable module "${moduleName}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/modules/${moduleName}/enable`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('success', result.message || `Module "${moduleName}" enabled successfully`);
+            loadModules();
+        } else {
+            showAlert('danger', result.error || 'Failed to enable module');
+        }
+    } catch (error) {
+        showAlert('danger', 'Error enabling module: ' + error.message);
+    }
+}
+
+async function disableModule(moduleName) {
+    if (moduleName === 'bot_api') {
+        showAlert('warning', 'Cannot disable critical module "bot_api"');
+        return;
+    }
+
+    if (!confirm(`Disable module "${moduleName}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/modules/${moduleName}/disable`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            showAlert('success', result.message || `Module "${moduleName}" disabled successfully`);
+            loadModules();
+        } else {
+            showAlert('danger', result.error || 'Failed to disable module');
+        }
+    } catch (error) {
+        showAlert('danger', 'Error disabling module: ' + error.message);
+    }
+}
+
+async function showModuleDetails(moduleName) {
+    const modal = new bootstrap.Modal(document.getElementById('moduleDetailsModal'));
+    const contentEl = document.getElementById('moduleDetailsContent');
+
+    contentEl.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+    modal.show();
+
+    try {
+        const response = await fetch(`/api/modules/${moduleName}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const module = result.data;
+            let html = `
+                <h6 style="color: var(--text-primary);"><strong>Module Name:</strong> ${module.name}</h6>
+                <p style="color: var(--text-primary);"><strong>Status:</strong> <span class="badge bg-${module.enabled ? 'success' : 'secondary'}">${module.enabled ? 'Enabled' : 'Disabled'}</span></p>
+                <hr style="border-color: var(--border-color);">
+                <h6 style="color: var(--text-primary);">Configuration:</h6>
+                <pre class="p-3 rounded" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);"><code>${JSON.stringify(module.config, null, 2)}</code></pre>
+            `;
+            contentEl.innerHTML = html;
+        } else {
+            contentEl.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+        }
+    } catch (error) {
+        contentEl.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+}
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" style="filter: invert(1);"></button>
+        </div>
+    `;
+
+    const container = document.querySelector('.card-body');
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}
