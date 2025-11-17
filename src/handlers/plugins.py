@@ -11,7 +11,6 @@ class PluginsHandlers:
         self.panel = panel_instance
         self.logger = logging.getLogger(self.__class__.__name__)
 
-
     @aiohttp_jinja2.template('plugins.html')
     async def _handle_plugins(self, request):
         """Управление плагинами."""
@@ -60,7 +59,7 @@ class PluginsHandlers:
         # Пересылаем multipart данные
         reader = await request.multipart()
         data = aiohttp.FormData()
-        self.logger.debug(f"Uploading plugin from file: {request.match_info['plugin_name']}")
+        self.logger.debug("Uploading plugin from file")
 
         async for field in reader:
             if field.filename:
@@ -82,7 +81,7 @@ class PluginsHandlers:
     async def _api_upload_plugin_url(self, request):
         """Загрузка плагина по URL (прокси к Bot API)."""
         data = await request.json()
-        self.logger.debug(f"Uploading plugin from url: {request.match_info['plugin_name']}")
+        self.logger.debug(f"Uploading plugin from URL: {data.get('url', 'unknown')}")
         return web.json_response(
             await self.panel.api_request('POST', '/api/plugins/upload-url', json=data)
         )
@@ -90,7 +89,7 @@ class PluginsHandlers:
     async def _api_upload_plugin_github(self, request):
         """Загрузка плагина с GitHub (прокси к Bot API)."""
         data = await request.json()
-        self.logger.debug(f"Uploading plugin from github: {request.match_info['plugin_name']}")
+        self.logger.debug(f"Uploading plugin from GitHub: {data.get('repo', 'unknown')}")
         return web.json_response(
             await self.panel.api_request('POST', '/api/plugins/upload-github', json=data)
         )

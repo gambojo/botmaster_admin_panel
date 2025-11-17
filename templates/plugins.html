@@ -527,144 +527,28 @@
 
 
 
-    // Upload plugin from file
-<!--    document.getElementById('uploadFileForm').addEventListener('submit', async function(e) {-->
-<!--        e.preventDefault();-->
-
-<!--        const fileInput = document.getElementById('pluginFile');-->
-<!--        const file = fileInput.files[0];-->
-
-<!--        if (!file) {-->
-<!--            showNotification('Ошибка', 'Выберите файл для загрузки', 'error');-->
-<!--            return;-->
-<!--        }-->
-
-<!--        const formData = new FormData();-->
-<!--        formData.append('file', file);-->
-
-<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
-<!--        const originalText = submitBtn.innerHTML;-->
-<!--        submitBtn.disabled = true;-->
-<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
-
-<!--        try {-->
-<!--            const response = await fetch('/admin/api/plugins/upload', {-->
-<!--                method: 'POST',-->
-<!--                headers: {-->
-<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token')-->
-<!--                },-->
-<!--                body: formData-->
-<!--            });-->
-
-<!--            const data = await response.json();-->
-
-<!--            if (data.success) {-->
-<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен`, 'success');-->
-<!--                fileInput.value = '';-->
-<!--                await loadPlugins();-->
-<!--            } else {-->
-<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
-<!--            }-->
-<!--        } catch (error) {-->
-<!--            console.error('Error uploading plugin:', error);-->
-<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
-<!--        } finally {-->
-<!--            submitBtn.disabled = false;-->
-<!--            submitBtn.innerHTML = originalText;-->
-<!--        }-->
-<!--    });-->
-
-    // Upload plugin from URL
-<!--    document.getElementById('uploadUrlForm').addEventListener('submit', async function(e) {-->
-<!--        e.preventDefault();-->
-
-<!--        const url = document.getElementById('pluginUrl').value;-->
-
-<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
-<!--        const originalText = submitBtn.innerHTML;-->
-<!--        submitBtn.disabled = true;-->
-<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
-
-<!--        try {-->
-<!--            const response = await fetch('/admin/api/plugins/upload-url', {-->
-<!--                method: 'POST',-->
-<!--                headers: {-->
-<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token'),-->
-<!--                    'Content-Type': 'application/json'-->
-<!--                },-->
-<!--                body: JSON.stringify({ url })-->
-<!--            });-->
-
-<!--            const data = await response.json();-->
-
-<!--            if (data.success) {-->
-<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен`, 'success');-->
-<!--                document.getElementById('pluginUrl').value = '';-->
-<!--                await loadPlugins();-->
-<!--            } else {-->
-<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
-<!--            }-->
-<!--        } catch (error) {-->
-<!--            console.error('Error uploading plugin from URL:', error);-->
-<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
-<!--        } finally {-->
-<!--            submitBtn.disabled = false;-->
-<!--            submitBtn.innerHTML = originalText;-->
-<!--        }-->
-<!--    });-->
-
-    // Upload plugin from GitHub
-<!--    document.getElementById('uploadGithubForm').addEventListener('submit', async function(e) {-->
-<!--        e.preventDefault();-->
-
-<!--        const repo = document.getElementById('githubRepo').value;-->
-<!--        const branch = document.getElementById('githubBranch').value || 'main';-->
-
-<!--        const submitBtn = e.target.querySelector('button[type="submit"]');-->
-<!--        const originalText = submitBtn.innerHTML;-->
-<!--        submitBtn.disabled = true;-->
-<!--        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';-->
-
-<!--        try {-->
-<!--            const response = await fetch('/admin/api/plugins/upload-github', {-->
-<!--                method: 'POST',-->
-<!--                headers: {-->
-<!--                    'Authorization': 'Bearer ' + localStorage.getItem('session_token'),-->
-<!--                    'Content-Type': 'application/json'-->
-<!--                },-->
-<!--                body: JSON.stringify({ repo, branch })-->
-<!--            });-->
-
-<!--            const data = await response.json();-->
-
-<!--            if (data.success) {-->
-<!--                showNotification('Успех', `Плагин ${data.plugin_name} успешно загружен с GitHub`, 'success');-->
-<!--                document.getElementById('githubRepo').value = '';-->
-<!--                await loadPlugins();-->
-<!--            } else {-->
-<!--                showNotification('Ошибка', data.error || 'Не удалось загрузить плагин', 'error');-->
-<!--            }-->
-<!--        } catch (error) {-->
-<!--            console.error('Error uploading plugin from GitHub:', error);-->
-<!--            showNotification('Ошибка', 'Ошибка при загрузке плагина', 'error');-->
-<!--        } finally {-->
-<!--            submitBtn.disabled = false;-->
-<!--            submitBtn.innerHTML = originalText;-->
-<!--        }-->
-<!--    });-->
-
 
     // Method switcher
     document.querySelectorAll('input[name="uploadMethod"]').forEach(radio => {
         radio.addEventListener('change', function() {
-            // Hide all sections
+            // Hide all sections and disable their required fields
             document.querySelectorAll('.upload-section').forEach(section => {
                 section.style.display = 'none';
+                // Disable required validation for hidden fields
+                section.querySelectorAll('input[required]').forEach(input => {
+                    input.removeAttribute('required');
+                    input.dataset.wasRequired = 'true';
+                });
             });
 
-            // Show selected section
+            // Show selected section and enable its required fields
             const method = this.id.replace('method', '').toLowerCase();
-            document.getElementById(`${method}Section`).style.display = 'block';
+            const activeSection = document.getElementById(`${method}Section`);
+            activeSection.style.display = 'block';
+            // Re-enable required validation for active section
+            activeSection.querySelectorAll('input[data-was-required]').forEach(input => {
+                input.setAttribute('required', 'required');
+            });
 
             // Update submit button text
             const submitBtn = document.getElementById('submitBtn');
