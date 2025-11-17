@@ -16,51 +16,44 @@ _logging_configured = False
 
 def setup_logging(config: Dict[str, Any]) -> None:
     """
-    Setup centralized logging configuration.
-    Can only be called once - subsequent calls are ignored.
-
-    Args:
-        config: Configuration dictionary with logging settings
+    Setup centralized logging configuration with separate audit logging.
     """
     global _logging_configured
-
-    # Prevent multiple setups
     if _logging_configured:
         return
 
+    # Основные логи
     logging_config = config.get('logging', {}).get('standard_log', {})
+    audit_config = config.get('logging', {}).get('audit_log', {})
 
-    # Get configuration
+    # Основная конфигурация
     log_level = logging_config.get('level', 'INFO').upper()
     log_file = logging_config.get('file', 'logs/admin_panel.log')
     log_dir = Path(log_file).parent
     log_to_console = logging_config.get('console', True)
-    log_format = logging_config.get('format',
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    max_size = logging_config.get('max_size', 10 * 1024 * 1024)  # 10 MB
+    log_format = logging_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    max_size = logging_config.get('max_size', 10 * 1024 * 1024)
 
-    # Create log directory
+    # Создаем директорию логов
     log_path = Path(log_dir)
     log_path.mkdir(parents=True, exist_ok=True)
 
-    # Get root logger (without name = root)
+    # Настраиваем корневой логгер
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
-
-    # Clear existing handlers
     root_logger.handlers.clear()
 
-    # Create formatter
+    # Форматтер для основных логов
     formatter = logging.Formatter(log_format)
 
-    # Console handler
+    # Консольный хендлер
     if log_to_console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
 
-    # File handler - main log
+    # Файловый хендлер для основных логов
     main_log_file = Path(log_file)
     file_handler = RotatingFileHandler(
         main_log_file,
@@ -72,7 +65,7 @@ def setup_logging(config: Dict[str, Any]) -> None:
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
-    # Error log file
+    # Хендлер для ошибок
     error_log_file = log_path / 'errors.log'
     error_handler = RotatingFileHandler(
         error_log_file,
@@ -84,11 +77,53 @@ def setup_logging(config: Dict[str, Any]) -> None:
     error_handler.setFormatter(formatter)
     root_logger.addHandler(error_handler)
 
-    # Log startup message using proper module logger
+    # Аудит логгер
+    if audit_config.get('enable', True):
+        # Создаем отдельные логгеры для всех типов аудита
+        audit_loggers = [
+            'AuditLogger',  # общий аудит
+            'AuditLoggerAPI',  # API вызовы
+            'AuditLoggerAuth',  # аутентификация
+            'AuditLoggerSecurity'  # безопасность
+        ]
+
+        # Форматтер для аудит-логов
+        audit_format = audit_config.get('format', '%(asctime)s - %(name)s - AUDIT - %(message)s')
+        audit_formatter = logging.Formatter(audit_format)
+
+        for logger_name in audit_loggers:
+            audit_logger = logging.getLogger(logger_name)
+            audit_logger.propagate = False  # Важно: не передавать в корневой логгер
+            audit_logger.setLevel(logging.INFO)
+            audit_logger.handlers.clear()  # Очищаем существующие хендлеры
+
+            # Файловый хендлер для аудита
+            audit_file = audit_config.get('file', 'logs/audit.log')
+            if audit_file:
+                audit_file_handler = RotatingFileHandler(
+                    audit_file,
+                    maxBytes=audit_config.get('max_size', max_size),
+                    backupCount=5,
+                    encoding='utf-8'
+                )
+                audit_file_handler.setLevel(logging.INFO)
+                audit_file_handler.setFormatter(audit_formatter)
+                audit_logger.addHandler(audit_file_handler)
+
+            # Консольный хендлер для аудита (если включен)
+            if audit_config.get('console', False):
+                audit_console_handler = logging.StreamHandler(sys.stdout)
+                audit_console_handler.setLevel(logging.INFO)
+                audit_console_handler.setFormatter(audit_formatter)
+                audit_logger.addHandler(audit_console_handler)
+
+    # Логируем инициализацию
     logger = logging.getLogger('LoggingConfig')
     logger.debug(f"Logging initialized: level={log_level}, dir={log_dir}, console={log_to_console}")
 
-    # Mark as configured
+    if audit_config.get('enable', True):
+        logger.debug(f"Audit logging enabled: file={audit_config.get('file')}, console={audit_config.get('console')}")
+
     _logging_configured = True
 
 
