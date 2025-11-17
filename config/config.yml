@@ -46,7 +46,7 @@ logging:
     # Вывод логов в консоль
     console: true
     # Файл для сохранения логов
-    file: 'logs/admin_panel.log'
+    file: 'logs/admin.log'
     # Формат записей
     format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     # Максимальный размер файла лога (10 МБ)
